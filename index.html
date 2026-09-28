@@ -1,0 +1,708 @@
+<title>Viento NCh 432</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: hoja de cálculo técnica — columna de parámetros generales (norma §5.3–5.11) + módulo de cálculo con pestañas.
+   Color: pizarra azulada; presión (+) en ámbar, succión (−) en celeste. */
+:root {
+  --bg: #0e1620; --panel: #151f2a; --panel2: #1b2835; --line: #263646; --fg: #d9e3ea; --muted: #8699a8;
+  --accent: #62b6e0; --accent-ink: #0b1a24; --pres: #eba54a; --succ: #6cc3ea; --ok: #69c08b; --bad: #ec7a6b;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 6px;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #eef2f5; --panel: #ffffff; --panel2: #f5f8fa; --line: #d3dde4; --fg: #15222d; --muted: #587080;
+    --accent: #1d6d99; --accent-ink: #ffffff; --pres: #a8600a; --succ: #19739f; --ok: #237a47; --bad: #b8392a;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #eef2f5; --panel: #ffffff; --panel2: #f5f8fa; --line: #d3dde4; --fg: #15222d; --muted: #587080;
+  --accent: #1d6d99; --accent-ink: #ffffff; --pres: #a8600a; --succ: #19739f; --ok: #237a47; --bad: #b8392a;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--font-body); margin: 0; }
+.wrap { max-width: 1380px; margin: 0 auto; padding-inline: 16px; padding-block: 0 48px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+.num, td.n, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ---------- barra superior ---------- */
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+.topin { max-width: 1380px; margin: 0 auto; padding: 10px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { font-size: 22px; font-weight: 700; letter-spacing: .01em; }
+.brand span { color: var(--muted); font-size: 12.5px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.seg button { background: transparent; border: 0; padding: 5px 11px; cursor: pointer; font-size: 12.5px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.spacer { flex: 1; }
+nav.tabs { display: flex; gap: 2px; overflow-x: auto; max-width: 1380px; margin: 0 auto; padding: 0 16px; }
+nav.tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 9px 14px 8px; cursor: pointer; color: var(--muted);
+  font-family: var(--font-display); font-weight: 600; font-size: 15.5px; letter-spacing: .02em; white-space: nowrap; }
+nav.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+nav.tabs button small { font-family: var(--font-body); font-weight: 400; font-size: 11.5px; color: var(--muted); margin-left: 6px; }
+
+/* ---------- estructura ---------- */
+.grid { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 20px; margin-top: 20px; align-items: start; }
+@media (max-width: 960px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+aside.gen { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+aside.gen > header { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+aside.gen > header h2 { font-size: 17px; }
+details.sec { border-bottom: 1px solid var(--line); }
+details.sec:last-child { border-bottom: 0; }
+details.sec > summary { list-style: none; cursor: pointer; padding: 10px 16px; display: flex; align-items: baseline; gap: 10px; }
+details.sec > summary::-webkit-details-marker { display: none; }
+details.sec > summary .cl { font-family: var(--font-mono); font-size: 11.5px; color: var(--accent); min-width: 34px; }
+details.sec > summary .tt { font-weight: 600; flex: 1; }
+details.sec > summary .rv { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); }
+details.sec > summary::after { content: "▸"; color: var(--muted); font-size: 11px; transition: transform .15s; }
+details.sec[open] > summary::after { transform: rotate(90deg); }
+.secbody { padding: 2px 16px 14px; display: grid; gap: 10px; }
+
+label.f { display: grid; gap: 4px; min-width: 0; }
+label.f > span, .lbl { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+input[type="number"], input[type="text"], select {
+  width: 100%; background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r); padding: 7px 9px; min-width: 0;
+}
+input[type="number"] { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.row4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 560px) { .row3, .row4 { grid-template-columns: 1fr 1fr; } }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.note { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.note b { color: var(--fg); font-weight: 600; }
+.warn { color: var(--bad); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 13px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- módulos ---------- */
+main.mod { display: grid; gap: 18px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+.card > h3 { font-size: 16.5px; margin-bottom: 12px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.card > h3 .cl { font-family: var(--font-mono); font-size: 12px; color: var(--accent); font-weight: 400; }
+.card > h3 .act { margin-left: auto; }
+.intro { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+.intro h2 { font-size: 24px; }
+.intro p { margin: 0; color: var(--muted); max-width: 70ch; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.stat { background: var(--panel); padding: 10px 14px; }
+.stat .lbl { display: block; }
+.stat .v { font-family: var(--font-mono); font-size: 19px; font-variant-numeric: tabular-nums; }
+.stat .u { font-size: 11.5px; color: var(--muted); margin-left: 3px; }
+
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 500; text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th.n, td.n { text-align: right; }
+td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td .sub { color: var(--muted); font-size: 11.5px; margin-left: 4px; }
+.pP { color: var(--pres); }
+.pS { color: var(--succ); }
+tr.grp td { background: var(--panel2); font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--fg); }
+.pill { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 1px 8px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.ok { color: var(--ok); } .pill.bad { color: var(--bad); }
+
+.btn { background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r); padding: 5px 11px; cursor: pointer; font-size: 12.5px; }
+.btn:hover { border-color: var(--accent); }
+.btn.pri { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 1100px) { .split { grid-template-columns: minmax(0, 1fr); } }
+svg.dia { width: 100%; height: auto; display: block; }
+svg.dia text { font-family: var(--font-mono); font-size: 11px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+/* salida para el artefacto de cerchas */
+.handoff { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+.handoff .fld { display: grid; gap: 4px; }
+.handoff .fld div { font-family: var(--font-mono); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r); padding: 7px 10px; }
+.combos tr { cursor: pointer; }
+.combos tr.sel td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 7px 14px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media print {
+  header.top nav, .btn, aside.gen details:not([open]) { display: none; }
+  .grid { grid-template-columns: 1fr; }
+  details.sec { break-inside: avoid; }
+}
+</style>
+
+<header class="top">
+  <div class="topin">
+    <div class="brand"><h1>Viento NCh 432</h1><span>Of2025 · cargas de viento</span></div>
+    <div class="spacer"></div>
+    <div class="seg" role="group" aria-label="Unidades">
+      <button type="button" id="uKgf" aria-pressed="true">kgf/m²</button>
+      <button type="button" id="uKN" aria-pressed="false">kN/m²</button>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Módulos">
+    <button role="tab" id="tab-galpon" aria-selected="true" data-tab="galpon">Galpón <small>método direccional</small></button>
+    <button role="tab" id="tab-simple" aria-selected="false" data-tab="simple">Edificio bajo <small>método simplificado</small></button>
+    <button role="tab" id="tab-cont" aria-selected="false" data-tab="cont">Contenedor <small>volcamiento y anclaje</small></button>
+    <button role="tab" id="tab-techo" aria-selected="false" data-tab="techo">Techumbre <small>datos para cerchas</small></button>
+  </nav>
+</header>
+
+<div class="wrap">
+<div class="grid">
+
+<!-- =================== PARÁMETROS GENERALES =================== -->
+<aside class="gen" aria-label="Parámetros generales">
+  <header><h2>Parámetros de entrada</h2><button class="btn" type="button" id="reset">Restablecer ejemplo</button></header>
+
+  <details class="sec" open>
+    <summary><span class="cl">5.3</span><span class="tt">Zona y velocidad básica</span><span class="rv" id="rvV"></span></summary>
+    <div class="secbody">
+      <label class="f"><span>Zona (Tabla 1)</span><select id="zona"></select></label>
+      <div class="note" id="zonaInfo"></div>
+      <label class="chk"><input type="checkbox" id="vMan"> Ingresar V manualmente</label>
+      <label class="f" id="vManBox"><span>V [m/s]</span><input type="number" id="V" step="0.5" min="0"></label>
+    </div>
+  </details>
+
+  <details class="sec" open>
+    <summary><span class="cl">T2</span><span class="tt">Factor de importancia</span><span class="rv" id="rvI"></span></summary>
+    <div class="secbody">
+      <label class="f"><span>Categoría de ocupación</span><select id="cat"></select></label>
+    </div>
+  </details>
+
+  <details class="sec">
+    <summary><span class="cl">5.4</span><span class="tt">Direccionalidad Kd</span><span class="rv" id="rvKd"></span></summary>
+    <div class="secbody">
+      <label class="f"><span>Tipo de estructura (Tabla 3)</span><select id="kd"></select></label>
+    </div>
+  </details>
+
+  <details class="sec" open>
+    <summary><span class="cl">5.5</span><span class="tt">Exposición</span><span class="rv" id="rvExp"></span></summary>
+    <div class="secbody">
+      <div class="row2">
+        <label class="f"><span>Categoría</span><select id="exp"><option>B</option><option>C</option><option>D</option></select></label>
+        <label class="f"><span>Kz según</span><select id="kzMetodo"><option value="tabla">Tabla 5 (interp.)</option><option value="formula">Fórmula Nota 1</option></select></label>
+      </div>
+      <div class="note" id="expInfo"></div>
+    </div>
+  </details>
+
+  <details class="sec">
+    <summary><span class="cl">5.6</span><span class="tt">Factor topográfico Kzt</span><span class="rv" id="rvKzt"></span></summary>
+    <div class="secbody">
+      <label class="chk"><input type="checkbox" id="topo"> Considerar colina, cima o escarpe (Fig. 3)</label>
+      <div id="topoBox" class="secbody" style="padding:0">
+        <label class="f"><span>Forma</span><select id="topoForma"><option value="escarpe2d">Escarpamiento 2D</option><option value="cima2d">Cima 2D (o valle)</option><option value="colina3d">Colina axisimétrica 3D</option></select></label>
+        <div class="row2">
+          <label class="f"><span>H [m]</span><input type="number" id="topoH" step="0.5"></label>
+          <label class="f"><span>Lh [m]</span><input type="number" id="topoLh" step="1"></label>
+          <label class="f"><span>x a la cresta [m]</span><input type="number" id="topoX" step="1"></label>
+          <label class="f"><span>z sobre terreno [m]</span><input type="number" id="topoZ" step="0.5"></label>
+        </div>
+        <label class="f"><span>Posición respecto a la cresta</span><select id="topoSentido"><option value="contra">Contra el viento (barlovento)</option><option value="favor">A favor del viento (sotavento)</option></select></label>
+        <div class="note" id="topoInfo"></div>
+      </div>
+    </div>
+  </details>
+
+  <details class="sec">
+    <summary><span class="cl">5.7</span><span class="tt">Elevación del suelo Ke</span><span class="rv" id="rvKe"></span></summary>
+    <div class="secbody">
+      <div class="row2">
+        <label class="f"><span>ze [msnm]</span><input type="number" id="ze" step="50" min="0"></label>
+        <label class="f"><span>Ke según</span><select id="keMetodo"><option value="formula">Fórmula Nota 2</option><option value="tabla">Tabla 4</option><option value="conservador">Ke = 1,00</option></select></label>
+      </div>
+      <div class="note">Nota 1: siempre es posible usar Ke = 1,00 de manera conservadora.</div>
+    </div>
+  </details>
+
+  <details class="sec">
+    <summary><span class="cl">5.9</span><span class="tt">Efecto de ráfaga G</span><span class="rv" id="rvG"></span></summary>
+    <div class="secbody">
+      <label class="f"><span>G (estructura rígida = 0,85)</span><input type="number" id="G" step="0.01" min="0"></label>
+    </div>
+  </details>
+
+  <details class="sec" open>
+    <summary><span class="cl">5.10</span><span class="tt">Cerramiento y GCpi</span><span class="rv" id="rvGCpi"></span></summary>
+    <div class="secbody">
+      <label class="f"><span>Clasificación</span><select id="cerr">
+        <option value="cerrado">Edificio cerrado</option><option value="parcCerrado">Parcialmente cerrado</option>
+        <option value="parcAbierto">Parcialmente abierto</option><option value="abierto">Abierto</option><option value="auto">Calcular con áreas de aberturas</option>
+      </select></label>
+      <div id="autoBox" class="row2">
+        <label class="f"><span>Ao muro [m²]</span><input type="number" id="Ao" step="0.1" min="0"></label>
+        <label class="f"><span>Ag muro [m²]</span><input type="number" id="Ag" step="1" min="0"></label>
+        <label class="f"><span>Aoi resto [m²]</span><input type="number" id="Aoi" step="0.1" min="0"></label>
+        <label class="f"><span>Agi resto [m²]</span><input type="number" id="Agi" step="1" min="0"></label>
+        <label class="chk" style="grid-column:1/-1"><input type="checkbox" id="ab80"> Cada muro está al menos 80 % abierto</label>
+      </div>
+      <div id="riBox" class="row2">
+        <label class="f"><span>Aog total [m²]</span><input type="number" id="Aog" step="0.1" min="0"></label>
+        <label class="f"><span>Vi volumen [m³]</span><input type="number" id="Vi" step="10" min="0"></label>
+      </div>
+      <div class="note" id="cerrInfo"></div>
+    </div>
+  </details>
+
+  <details class="sec" open>
+    <summary><span class="cl">Σ</span><span class="tt">Resumen</span></summary>
+    <div class="secbody"><dl class="kv" id="genKV"></dl>
+      <div class="note">q(z) = 0,613 · I · Kz · Kzt · Ke · V² &nbsp;[N/m²]</div></div>
+  </details>
+</aside>
+
+<!-- =================== MÓDULOS =================== -->
+<main class="mod">
+
+<!-- ---------- GALPÓN ---------- -->
+<section id="p-galpon" role="tabpanel" aria-labelledby="tab-galpon" class="mod" style="display:grid;gap:18px">
+  <div class="intro"><h2>Galpón · método direccional</h2>
+    <p>Sistema principal resistente (SPRFV). p = q·Kd·G·Cp − qh·Kd·(GCpi), igual que tu planilla. Se evalúan las dos direcciones de viento y ambos signos de GCpi.</p></div>
+  <div class="card">
+    <h3>Geometría</h3>
+    <div class="row4">
+      <label class="f"><span>Largo (∥ cumbrera) [m]</span><input type="number" id="gLargo" step="0.1" min="0"></label>
+      <label class="f"><span>Ancho / luz [m]</span><input type="number" id="gAncho" step="0.1" min="0"></label>
+      <label class="f"><span>Altura alero [m]</span><input type="number" id="gAlero" step="0.1" min="0"></label>
+      <label class="f"><span>Techo</span><select id="gTecho"><option value="dos">Dos aguas</option><option value="una">Una agua</option><option value="plana">Plano</option></select></label>
+      <label class="f"><span>Inclinación θ [°]</span><input type="number" id="gTheta" step="0.5" min="0" max="89"></label>
+      <label class="f"><span>Ancho tributario marcos [m]</span><input type="number" id="gTrib" step="0.1" min="0"></label>
+    </div>
+  </div>
+  <div class="stats" id="gStats"></div>
+  <div id="gDirs" style="display:grid;gap:18px"></div>
+  <div class="card">
+    <h3><span class="cl">5.8</span> Muro de barlovento · presión en altura (Cp = 0,8, con qz)</h3>
+    <div class="tbl"><table id="gPerfil"></table></div>
+  </div>
+</section>
+
+<!-- ---------- SIMPLIFICADO ---------- -->
+<section id="p-simple" role="tabpanel" aria-labelledby="tab-simple" hidden style="display:grid;gap:18px">
+  <div class="intro"><h2>Edificio bajo · método simplificado</h2>
+    <p>Procedimiento de envolvente para edificios de baja altura (viviendas, sedes sociales): p = qh·Kd·[(GCpf) − (GCpi)], con zonas 1 a 6 y zonas de borde E de ancho 2a.</p></div>
+  <div class="card">
+    <h3>Geometría</h3>
+    <div class="row4">
+      <label class="f"><span>Largo (∥ cumbrera) [m]</span><input type="number" id="sLargo" step="0.1" min="0"></label>
+      <label class="f"><span>Ancho [m]</span><input type="number" id="sAncho" step="0.1" min="0"></label>
+      <label class="f"><span>Altura alero [m]</span><input type="number" id="sAlero" step="0.1" min="0"></label>
+      <label class="f"><span>Techo</span><select id="sTecho"><option value="dos">Dos aguas</option><option value="una">Una agua</option><option value="plana">Plano</option></select></label>
+      <label class="f"><span>Inclinación θ [°]</span><input type="number" id="sTheta" step="0.5" min="0" max="45"></label>
+      <label class="f"><span>Ancho tributario [m]</span><input type="number" id="sTrib" step="0.1" min="0"></label>
+      <label class="chk" style="grid-column:span 2"><input type="checkbox" id="sKd" checked> Incluir Kd en la presión</label>
+    </div>
+  </div>
+  <div class="stats" id="sStats"></div>
+  <div class="card"><h3>Condiciones de aplicación</h3><div id="sChecks" style="display:flex;gap:8px 16px;flex-wrap:wrap"></div></div>
+  <div class="split">
+    <div class="card"><h3>Caso A <span class="cl">viento transversal a la cumbrera</span><button class="btn act" type="button" data-copy="sA">Copiar tabla</button></h3><div class="tbl"><table id="sA"></table></div></div>
+    <div class="card"><h3>Caso B <span class="cl">viento paralelo a la cumbrera</span><button class="btn act" type="button" data-copy="sB">Copiar tabla</button></h3><div class="tbl"><table id="sB"></table></div></div>
+  </div>
+  <div class="card"><h3>Zonas en planta</h3><div id="sDia"></div>
+    <p class="note">En el caso A, si GCpf es negativo en las zonas 2 o 2E, se aplica en una franja desde el borde igual a 0,5 × ancho perpendicular a la cumbrera o 2,5h (la menor); el resto hasta la cumbrera usa el coeficiente de la zona 3 o 3E. Verifique además los casos torsionales.</p></div>
+</section>
+
+<!-- ---------- CONTENEDOR ---------- -->
+<section id="p-cont" role="tabpanel" aria-labelledby="tab-cont" hidden style="display:grid;gap:18px">
+  <div class="intro"><h2>Contenedor · análisis puntual</h2>
+    <p>Módulo tipo oficina o bodega sobre apoyos. Fuerza horizontal neta (la presión interna se anula), succión de techo con +GCpi, volcamiento, deslizamiento y tracción de anclajes.</p></div>
+  <div class="card">
+    <h3>Contenedor</h3>
+    <div class="row4">
+      <label class="f"><span>Tipo</span><select id="cTipo"><option value="20">20' estándar</option><option value="40">40' estándar</option><option value="40hc">40' High Cube</option><option value="10">10'</option><option value="custom">Personalizado</option></select></label>
+      <label class="f"><span>Largo [m]</span><input type="number" id="cLargo" step="0.01" min="0"></label>
+      <label class="f"><span>Ancho [m]</span><input type="number" id="cAncho" step="0.01" min="0"></label>
+      <label class="f"><span>Alto [m]</span><input type="number" id="cAlto" step="0.01" min="0"></label>
+      <label class="f"><span>Niveles apilados</span><input type="number" id="cNiv" step="1" min="1"></label>
+      <label class="f"><span>Altura apoyos [m]</span><input type="number" id="cApoyo" step="0.05" min="0"></label>
+      <label class="f"><span>Peso por módulo [kg]</span><input type="number" id="cPeso" step="50" min="0"></label>
+      <label class="f"><span>Roce μ</span><input type="number" id="cMu" step="0.05" min="0"></label>
+      <label class="f"><span>FS mínimo</span><input type="number" id="cFS" step="0.1" min="0"></label>
+      <label class="f"><span>γD (peso)</span><input type="number" id="cGD" step="0.1" min="0"></label>
+      <label class="f"><span>γW (viento)</span><input type="number" id="cGW" step="0.1" min="0"></label>
+      <label class="f"><span>Anclajes por lado</span><input type="number" id="cAnc" step="1" min="1"></label>
+    </div>
+    <p class="note" style="margin:10px 0 0">Peso: solo cargas permanentes que siempre estarán presentes (tara + terminaciones), sin sobrecarga de uso. Anclaje con la combinación γD·D + γW·W (por defecto 0,9D + 1,6W, NCh 3171).</p>
+  </div>
+  <div class="stats" id="cStats"></div>
+  <div class="split" id="cRes"></div>
+</section>
+
+<!-- ---------- TECHUMBRE ---------- -->
+<section id="p-techo" role="tabpanel" aria-labelledby="tab-techo" hidden style="display:grid;gap:18px">
+  <div class="intro"><h2>Techumbre · datos para cerchas</h2>
+    <p>Entrega q, Cpi, Cp barlovento y Cp sotavento listos para tu artefacto de cerchas, que calcula p = q·(Cp − Cpi). Por eso q incluye Kd y los Cp entregados incluyen G.</p></div>
+  <div class="card">
+    <h3>Techumbre</h3>
+    <div class="row4">
+      <label class="f"><span>Luz de la cercha [m]</span><input type="number" id="tLuz" step="0.1" min="0"></label>
+      <label class="f"><span>Largo edificio [m]</span><input type="number" id="tLargo" step="0.1" min="0"></label>
+      <label class="f"><span>Altura alero [m]</span><input type="number" id="tAlero" step="0.1" min="0"></label>
+      <label class="f"><span>Techo</span><select id="tTecho"><option value="dos">Dos aguas</option><option value="una">Una agua</option><option value="plana">Plano</option></select></label>
+      <label class="f"><span>Inclinación θ [°]</span><input type="number" id="tTheta" step="0.5" min="0" max="89"></label>
+      <label class="f"><span>Dirección del viento</span><select id="tDir"><option value="normal">Normal a la cumbrera</option><option value="paralelo">Paralelo a la cumbrera</option></select></label>
+      <label class="f" id="tXBox"><span>Cercha a x del borde [m]</span><input type="number" id="tX" step="0.5" min="0"></label>
+    </div>
+  </div>
+  <div class="stats" id="tStats"></div>
+  <div class="card"><h3>Valores para el artefacto de cerchas<button class="btn pri act" type="button" id="tCopy">Copiar valores</button></h3>
+    <div class="split"><div class="handoff" id="tHand" style="align-self:start"></div><div id="tDia"></div></div>
+  </div>
+  <div class="card"><h3>Combinaciones <span class="cl">toque una fila para cargarla en los valores</span></h3><div class="tbl"><table id="tCombos" class="combos"></table></div></div>
+</section>
+
+</main>
+</div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="calc.js"></script>
+<script>
+(function () {
+'use strict';
+const N = window.NCh432;
+const $ = (id) => document.getElementById(id);
+const nf = (v, d) => (v === null || v === undefined || !isFinite(v)) ? '—' : v.toLocaleString('es-CL', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+/* ---------------- estado ---------------- */
+const DEFAULTS = {
+  zona: 'IV-A', vMan: false, V: 37, cat: 'II', kd: 'spr', exp: 'C', kzMetodo: 'tabla',
+  topo: false, topoForma: 'escarpe2d', topoH: 20, topoLh: 60, topoX: 0, topoZ: 5, topoSentido: 'favor',
+  ze: 0, keMetodo: 'formula', G: 0.85,
+  cerr: 'cerrado', Ao: 0, Ag: 200, Aoi: 0, Agi: 800, ab80: false, Aog: 0, Vi: 0,
+  gLargo: 51.8, gAncho: 13.9, gAlero: 6.4, gTecho: 'dos', gTheta: 10, gTrib: 6,
+  sLargo: 14, sAncho: 8, sAlero: 2.6, sTecho: 'dos', sTheta: 20, sTrib: 1, sKd: true,
+  cTipo: '20', cLargo: 6.06, cAncho: 2.44, cAlto: 2.59, cNiv: 1, cApoyo: 0.3, cPeso: 2400, cMu: 0.4, cFS: 1.5, cGD: 0.9, cGW: 1.6, cAnc: 2,
+  tLuz: 10, tLargo: 30, tAlero: 3.5, tTecho: 'dos', tTheta: 15, tDir: 'normal', tX: 0,
+};
+const CONT = { '20': [6.06, 2.44, 2.59, 2400], '40': [12.19, 2.44, 2.59, 4000], '40hc': [12.19, 2.44, 2.9, 4200], '10': [2.99, 2.44, 2.59, 1500] };
+let S = Object.assign({}, DEFAULTS), unit = 'kgf', tab = 'galpon', tSel = 0;
+try { const raw = localStorage.getItem('nch432-state'); if (raw) S = Object.assign({}, DEFAULTS, JSON.parse(raw)); } catch (e) {}
+try { unit = localStorage.getItem('nch432-unit') || 'kgf'; tab = localStorage.getItem('nch432-tab') || 'galpon'; } catch (e) {}
+if (/^#(galpon|simple|cont|techo)$/.test(location.hash)) tab = location.hash.slice(1);
+const save = () => { try { localStorage.setItem('nch432-state', JSON.stringify(S)); localStorage.setItem('nch432-unit', unit); localStorage.setItem('nch432-tab', tab); } catch (e) {} };
+
+/* ---------------- selects ---------------- */
+$('zona').innerHTML = N.ZONAS.map((z) => `<option value="${z.id}">${z.id} · ${z.des} · ${z.V} m/s</option>`).join('');
+$('cat').innerHTML = N.IMPORTANCIA.map((c) => `<option value="${c.cat}">Categoría ${c.cat} · T = ${c.T} años · I = ${nf(c.I, 2)}</option>`).join('');
+{
+  let html = '', grp = '';
+  for (const k of N.KD) {
+    if (k.grupo !== grp) { if (grp) html += '</optgroup>'; html += `<optgroup label="${k.grupo}">`; grp = k.grupo; }
+    html += `<option value="${k.id}">${k.tipo} · ${nf(k.Kd, 2)}</option>`;
+  }
+  $('kd').innerHTML = html + '</optgroup>';
+}
+
+const ids = Object.keys(DEFAULTS);
+function toUI() {
+  for (const k of ids) {
+    const el = $(k); if (!el) continue;
+    if (el.type === 'checkbox') el.checked = !!S[k]; else el.value = S[k];
+  }
+}
+function fromUI(e) {
+  const el = e.target; const k = el.id; if (!(k in DEFAULTS)) return;
+  S[k] = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? (el.value === '' ? 0 : +el.value) : el.value);
+  if (k === 'cTipo' && CONT[S.cTipo]) { [S.cLargo, S.cAncho, S.cAlto, S.cPeso] = CONT[S.cTipo]; toUI(); }
+  if (['cLargo', 'cAncho', 'cAlto'].includes(k)) { S.cTipo = 'custom'; $('cTipo').value = 'custom'; }
+  save(); render();
+}
+document.addEventListener('input', fromUI);
+document.addEventListener('change', fromUI);
+
+/* ---------------- unidades ---------------- */
+const U = () => unit === 'kgf' ? { u: 'kgf/m²', ul: 'kgf/m', f: (p) => p / N.G_ACC, d: 1, dl: 1 } : { u: 'kN/m²', ul: 'kN/m', f: (p) => p / 1000, d: 3, dl: 3 };
+const cls = (v) => v > 0 ? 'pP' : v < 0 ? 'pS' : '';
+const P = (pNm2) => { const u = U(); const v = u.f(pNm2); return `<span class="${cls(v)}">${nf(v, u.d)}</span>`; };
+function setUnit(u) { unit = u; $('uKgf').setAttribute('aria-pressed', u === 'kgf'); $('uKN').setAttribute('aria-pressed', u === 'kN'); save(); render(); }
+$('uKgf').onclick = () => setUnit('kgf'); $('uKN').onclick = () => setUnit('kN');
+
+/* ---------------- pestañas ---------------- */
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('nav.tabs button').forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === t));
+  ['galpon', 'simple', 'cont', 'techo'].forEach((x) => { $('p-' + x).hidden = x !== t; });
+  save();
+}
+document.querySelectorAll('nav.tabs button').forEach((b) => b.onclick = () => setTab(b.dataset.tab));
+
+$('reset').onclick = () => { S = Object.assign({}, DEFAULTS); tSel = 0; toUI(); save(); render(); toast('Ejemplo restablecido'); };
+
+/* ---------------- utilidades UI ---------------- */
+let tt;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 1600); }
+function copy(text, msg) {
+  const done = () => toast(msg || 'Copiado');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, () => fallback(text, done));
+  } else fallback(text, done);
+}
+function fallback(text, done) {
+  const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) { toast('Seleccione y copie manualmente'); }
+  ta.remove();
+}
+function tableTSV(tbl) {
+  return [...tbl.rows].map((r) => [...r.cells].map((c) => c.innerText.replace(/\s+/g, ' ').trim()).join('\t')).join('\n');
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-copy]'); if (!b) return;
+  const tb = $(b.dataset.copy) || b.closest('.card').querySelector('table');
+  copy(tableTSV(tb), 'Tabla copiada (pegable en Excel)');
+});
+const stat = (lbl, v, u) => `<div class="stat"><span class="lbl">${lbl}</span><span class="v">${v}</span><span class="u">${u || ''}</span></div>`;
+
+/* ---------------- parámetros generales ---------------- */
+function general() {
+  const z = N.ZONAS.find((x) => x.id === S.zona) || N.ZONAS[0];
+  const V = S.vMan ? +S.V : z.V;
+  const imp = N.IMPORTANCIA.find((c) => c.cat === S.cat);
+  const kd = N.KD.find((k) => k.id === S.kd);
+  const topo = S.topo ? N.Kzt({ forma: S.topoForma, H: S.topoH, Lh: S.topoLh, x: S.topoX, z: S.topoZ, sentido: S.topoSentido, exp: S.exp }) : { Kzt: 1, aplica: false };
+  const Ke = N.Ke(+S.ze, S.keMetodo);
+  let clsC = S.cerr;
+  if (clsC === 'auto') clsC = N.clasificarCerramiento({ Ao: S.Ao, Ag: S.Ag, Aoi: S.Aoi, Agi: S.Agi, abierto80: S.ab80 });
+  const C = N.CERRAMIENTO[clsC];
+  const Ri = clsC === 'parcCerrado' ? N.Ri(+S.Aog, +S.Vi) : 1;
+  return { zonaObj: z, V, I: imp.I, Kd: kd.Kd, kdObj: kd, Kzt: topo.Kzt, topo, Ke, exp: S.exp, kzMetodo: S.kzMetodo, G: +S.G,
+    cerramiento: clsC, cerrObj: C, Ri, GCpi: C.GCpi * Ri };
+}
+function renderGeneral(g) {
+  $('zonaInfo').innerHTML = `Latitud ${g.zonaObj.lat} · altitud ${g.zonaObj.alt} msnm · <b>V = ${g.zonaObj.V} m/s</b>`;
+  $('vManBox').hidden = !S.vMan;
+  $('rvV').textContent = 'V = ' + nf(g.V, 1) + ' m/s';
+  $('rvI').textContent = 'I = ' + nf(g.I, 2);
+  $('rvKd').textContent = 'Kd = ' + nf(g.Kd, 2);
+  $('rvExp').textContent = 'Exp. ' + g.exp;
+  $('rvKzt').textContent = 'Kzt = ' + nf(g.Kzt, 3);
+  $('rvKe').textContent = 'Ke = ' + nf(g.Ke, 3);
+  $('rvG').textContent = 'G = ' + nf(g.G, 2);
+  $('rvGCpi').textContent = 'GCpi = ±' + nf(g.GCpi, 2);
+  const E = N.EXPOSICION[g.exp], T = N.TERRENO[g.exp];
+  $('expInfo').innerHTML = `<b>Rugosidad ${g.exp}:</b> ${E.rug}<br><b>Exposición ${g.exp}:</b> ${E.exp}<br>α = ${nf(T.alpha, 1)} · zg = ${T.zg} m · zmín = ${T.zmin} m`;
+  $('topoBox').hidden = !S.topo;
+  if (S.topo) {
+    const t = g.topo;
+    $('topoInfo').innerHTML = t.aplica
+      ? `K1 = ${nf(t.K1, 3)} · K2 = ${nf(t.K2, 3)} · K3 = ${nf(t.K3, 3)}<br><b>Kzt = (1 + K1·K2·K3)² = ${nf(t.Kzt, 3)}</b>${t.motivo ? '<br>' + t.motivo : ''}`
+      : t.motivo;
+  }
+  $('autoBox').hidden = S.cerr !== 'auto';
+  $('riBox').hidden = g.cerramiento !== 'parcCerrado';
+  $('cerrInfo').innerHTML = `${S.cerr === 'auto' ? '<b>' + g.cerrObj.nombre + '</b> · ' : ''}Presión interna ${g.cerrObj.presion.toLowerCase()} · GCpi = ±${nf(g.cerrObj.GCpi, 2)}`
+    + (g.cerramiento === 'parcCerrado' ? `<br>Ri = ${nf(g.Ri, 3)} (5.11.1) → GCpi = ±${nf(g.GCpi, 3)}` : '');
+  $('genKV').innerHTML = [['V', nf(g.V, 1) + ' m/s'], ['I', nf(g.I, 2)], ['Kd', nf(g.Kd, 2)], ['Kzt', nf(g.Kzt, 3)], ['Ke', nf(g.Ke, 3)], ['G', nf(g.G, 2)], ['GCpi', '±' + nf(g.GCpi, 2)]]
+    .map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
+}
+
+/* ---------------- diagrama de elevación ---------------- */
+function elevacion(o) {
+  // o: { ancho, hAlero, rise, tipo, vals: {ww, lw, rw, rl} (N/m²), titulo, u?: unidades, soloTecho?: bool }
+  const W = 520, H = 250, m = 70;
+  const sx = (W - 2 * m) / o.ancho, hTot = o.hAlero + o.rise;
+  const sy = Math.min((H - 110) / Math.max(hTot, 0.1), sx);
+  const base = H - 30, x0 = m, x1 = m + o.ancho * sx, yA = base - o.hAlero * sy;
+  const yR = base - hTot * sy;
+  const u = o.u || U();
+  let pts;
+  if (o.tipo === 'dos') pts = `${x0},${base} ${x0},${yA} ${(x0 + x1) / 2},${yR} ${x1},${yA} ${x1},${base}`;
+  else if (o.tipo === 'una') pts = `${x0},${base} ${x0},${yA} ${x1},${yR} ${x1},${base}`;
+  else pts = `${x0},${base} ${x0},${yA} ${x1},${yA} ${x1},${base}`;
+  const col = (v) => v > 0 ? 'var(--pres)' : 'var(--succ)';
+  const lab = (v) => nf(u.f(v), u.d);
+  const arr = (x, y, nx, ny, v) => {
+    // flecha normal a la superficie; presión (+) apunta hacia la superficie
+    const L = 26, s = v > 0 ? 1 : -1;
+    const xa = x + nx * L, ya = y + ny * L;
+    const [xs, ys, xe, ye] = s > 0 ? [xa, ya, x, y] : [x, y, xa, ya];
+    const ang = Math.atan2(ye - ys, xe - xs), h = 6;
+    return `<line x1="${xs}" y1="${ys}" x2="${xe}" y2="${ye}" stroke="${col(v)}" stroke-width="1.6"/>` +
+      `<path d="M${xe},${ye} L${xe - h * Math.cos(ang - 0.45)},${ye - h * Math.sin(ang - 0.45)} L${xe - h * Math.cos(ang + 0.45)},${ye - h * Math.sin(ang + 0.45)} Z" fill="${col(v)}"/>`;
+  };
+  let g = '';
+  const v = o.vals;
+  // muros
+  if (!o.soloTecho) {
+  for (const f of [0.3, 0.7]) g += arr(x0, base - (base - yA) * f, -1, 0, v.ww);
+  g += `<text x="${x0 - 34}" y="${(base + yA) / 2 - 22}" text-anchor="middle" fill="${col(v.ww)}">${lab(v.ww)}</text>`;
+  for (const f of [0.3, 0.7]) g += arr(x1, base - (base - yA) * f, 1, 0, v.lw);
+  g += `<text x="${x1 + 34}" y="${(base + yA) / 2 - 22}" text-anchor="middle" fill="${col(v.lw)}">${lab(v.lw)}</text>`;
+  }
+  // techo
+  const seg = (xa, ya, xb, yb, val) => {
+    const dx = xb - xa, dy = yb - ya, len = Math.hypot(dx, dy);
+    let nx = dy / len, ny = -dx / len; if (ny > 0) { nx = -nx; ny = -ny; }
+    let s = '';
+    for (const f of [0.3, 0.7]) s += arr(xa + dx * f, ya + dy * f, nx, ny, val);
+    s += `<text x="${xa + dx * 0.5 + nx * 40}" y="${ya + dy * 0.5 + ny * 40}" text-anchor="middle" fill="${col(val)}">${lab(val)}</text>`;
+    return s;
+  };
+  if (o.tipo === 'dos') { g += seg(x0, yA, (x0 + x1) / 2, yR, v.rw); g += seg((x0 + x1) / 2, yR, x1, yA, v.rl); }
+  else if (o.tipo === 'una') g += seg(x0, yA, x1, yR, v.rw);
+  else { g += seg(x0, yA, (x0 + x1) / 2, yA, v.rw); g += seg((x0 + x1) / 2, yA, x1, yA, v.rl); }
+  return `<p class="note" style="margin:0 0 4px">${o.titulo} · ${u.u}</p><svg class="dia" viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.titulo}">
+    <g fill="none" stroke="var(--muted)"><path d="M12,${H - 12} h40" /><path d="M44,${H - 16} l8,4 l-8,4" /></g>
+    <text x="12" y="${H - 18}" fill="var(--muted)">viento</text>
+    <line x1="${x0 - 30}" y1="${base}" x2="${x1 + 30}" y2="${base}" stroke="var(--line)" stroke-width="2"/>
+    <polygon points="${pts}" fill="var(--panel2)" stroke="var(--fg)" stroke-width="1.4"/>
+    ${g}
+  </svg>`;
+}
+
+/* ---------------- GALPÓN ---------------- */
+function renderGalpon(g) {
+  const r = N.direccional(g, { largo: +S.gLargo, ancho: +S.gAncho, hAlero: +S.gAlero, tipoTecho: S.gTecho, theta: +S.gTheta });
+  const u = U();
+  $('gTheta').disabled = S.gTecho === 'plana';
+  $('gStats').innerHTML = stat('θ', nf(r.theta, 1), '°') + stat('h media', nf(r.h, 2), 'm') + stat('h cumbrera', nf(r.hCum, 2), 'm')
+    + stat('Kh', nf(r.Kh, 3)) + stat('qh', nf(u.f(r.qh), u.d), u.u) + stat('qh·Kd', nf(u.f(r.qh * g.Kd), u.d), u.u);
+  const trib = +S.gTrib;
+  $('gDirs').innerHTML = r.dirs.map((d, i) => {
+    const rows = d.filas.map((f) => `<tr><td>${f.sup}${f.sub ? `<span class="sub">${f.sub}</span>` : ''}</td>
+      <td class="n">${nf(f.Cp, 3)}</td><td class="n">${P(f.pos)}</td><td class="n">${P(f.neg)}</td>
+      ${trib > 0 ? `<td class="n">${nf(u.f(f.pos) * trib, u.dl)}</td><td class="n">${nf(u.f(f.neg) * trib, u.dl)}</td>` : ''}</tr>`).join('');
+    const tbl = `<table id="gT${i}"><thead><tr><th>Superficie</th><th class="n">Cp</th><th class="n">p +GCpi</th><th class="n">p −GCpi</th>
+      ${trib > 0 ? `<th class="n">w +GCpi</th><th class="n">w −GCpi</th>` : ''}</tr></thead><tbody>${rows}</tbody></table>`;
+    let dia = '';
+    if (d.id === 'normal') {
+      const f = d.filas;
+      const roofW = f.filter((x) => x.sup.startsWith('Techo'));
+      const vals = { ww: f[0].pos, lw: f[1].pos, rw: roofW[0].pos, rl: (S.gTecho === 'dos' && r.theta >= 10) ? roofW[roofW.length - 1].pos : (roofW.length > 2 ? roofW[roofW.length - 2].pos : roofW[0].pos) };
+      dia = `<div>${elevacion({ ancho: +S.gAncho, hAlero: +S.gAlero, rise: r.rise, tipo: S.gTecho, vals, titulo: 'Elevación · caso +GCpi, primer Cp de cada superficie' })}
+        <div class="legend"><span><i style="background:var(--pres)"></i>presión (+)</span><span><i style="background:var(--succ)"></i>succión (−)</span></div></div>`;
+    }
+    return `<div class="card"><h3>${d.nombre} <span class="cl">B = ${nf(d.B, 2)} m · L = ${nf(d.L, 2)} m · L/B = ${nf(d.LB, 2)} · h/L = ${nf(d.hL, 3)}</span>
+      <button class="btn act" type="button" data-copy="gT${i}">Copiar tabla</button></h3>
+      <div class="${dia ? 'split' : ''}"><div class="tbl">${tbl}
+      <p class="note">p en ${u.u}${trib > 0 ? ` · w = p × ${nf(trib, 2)} m en ${u.ul}` : ''}. +GCpi: presión interna hacia las superficies interiores; −GCpi: succión interna.</p></div>${dia}</div></div>`;
+  }).join('');
+  $('gPerfil').innerHTML = `<thead><tr><th class="n">z [m]</th><th class="n">Kz</th><th class="n">qz [${u.u}]</th><th class="n">p +GCpi</th><th class="n">p −GCpi</th>${trib > 0 ? '<th class="n">w +GCpi</th><th class="n">w −GCpi</th>' : ''}</tr></thead><tbody>` +
+    r.perfil.map((f) => `<tr><td class="n">${nf(f.z, 2)}</td><td class="n">${nf(f.Kz, 3)}</td><td class="n">${nf(u.f(f.q), u.d)}</td><td class="n">${P(f.pos)}</td><td class="n">${P(f.neg)}</td>
+      ${trib > 0 ? `<td class="n">${nf(u.f(f.pos) * trib, u.dl)}</td><td class="n">${nf(u.f(f.neg) * trib, u.dl)}</td>` : ''}</tr>`).join('') + '</tbody>';
+}
+
+/* ---------------- SIMPLIFICADO ---------------- */
+function renderSimple(g) {
+  const r = N.simplificado(g, { largo: +S.sLargo, ancho: +S.sAncho, hAlero: +S.sAlero, tipoTecho: S.sTecho, theta: +S.sTheta }, { sinKd: !S.sKd });
+  const u = U(), trib = +S.sTrib;
+  $('sTheta').disabled = S.sTecho === 'plana';
+  $('sStats').innerHTML = stat('θ', nf(r.theta, 1), '°') + stat('h media', nf(r.h, 2), 'm') + stat('Kh', nf(r.Kh, 3)) + stat('qh', nf(u.f(r.qh), u.d), u.u)
+    + stat('a', nf(r.a, 2), 'm') + stat('2a (zona E)', nf(r.dosA, 2), 'm');
+  $('sChecks').innerHTML = r.checks.map((c) => `<span class="pill ${c.ok ? 'ok' : 'bad'}">${c.ok ? 'CUMPLE' : 'NO CUMPLE'}</span> <span class="note" style="margin-right:10px">${c.txt}</span>`).join('');
+  const tbl = (rows) => `<thead><tr><th>Zona</th><th>Superficie</th><th class="n">GCpf</th><th class="n">p +GCpi</th><th class="n">p −GCpi</th>${trib > 0 ? '<th class="n">w máx</th>' : ''}</tr></thead><tbody>` +
+    rows.map((f) => {
+      const wmax = Math.abs(f.pos) > Math.abs(f.neg) ? f.pos : f.neg;
+      return `<tr><td class="mono">${f.zona}</td><td>${f.desc}</td><td class="n">${nf(f.GCpf, 2)}</td><td class="n">${P(f.pos)}</td><td class="n">${P(f.neg)}</td>${trib > 0 ? `<td class="n">${nf(u.f(wmax) * trib, u.dl)}</td>` : ''}</tr>`;
+    }).join('') + '</tbody>';
+  $('sA').innerHTML = tbl(r.casoA);
+  $('sB').innerHTML = tbl(r.casoB);
+  $('sDia').innerHTML = planta(+S.sLargo, +S.sAncho, r.dosA);
+}
+function planta(Lg, An, e2) {
+  const W = 520, H = 230, m = 30;
+  const s = Math.min((W - 2 * m - 60) / Lg, (H - 2 * m) / An);
+  const w = Lg * s, h = An * s, x0 = (W - w) / 2, y0 = (H - h) / 2, e = Math.min(e2 * s, w / 2);
+  return `<svg class="dia" style="max-width:560px" viewBox="0 0 ${W} ${H}" role="img" aria-label="Planta con zonas de borde">
+    <rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="var(--panel2)" stroke="var(--fg)" stroke-width="1.4"/>
+    <rect x="${x0}" y="${y0}" width="${e}" height="${h}" fill="var(--pres)" opacity=".22"/>
+    <rect x="${x0 + w - e}" y="${y0}" width="${e}" height="${h}" fill="var(--pres)" opacity=".22"/>
+    <line x1="${x0}" y1="${y0 + h / 2}" x2="${x0 + w}" y2="${y0 + h / 2}" stroke="var(--muted)" stroke-dasharray="5 4"/>
+    <text x="${x0 + w / 2}" y="${y0 + h / 2 - 6}" text-anchor="middle" fill="var(--muted)">cumbrera</text>
+    <text x="${x0 + e / 2}" y="${y0 + h + 16}" text-anchor="middle" fill="var(--fg)">2a = ${nf(e2, 2)} m</text>
+    <text x="${x0 + w / 2}" y="${y0 - 8}" text-anchor="middle" fill="var(--muted)">largo ${nf(Lg, 2)} m</text>
+    <text x="${x0 - 8}" y="${y0 + h / 2}" text-anchor="end" fill="var(--muted)">${nf(An, 2)} m</text>
+    <text x="${x0 + e / 2}" y="${y0 + 16}" text-anchor="middle" fill="var(--fg)">E</text>
+    <text x="${x0 + w - e / 2}" y="${y0 + 16}" text-anchor="middle" fill="var(--fg)">E</text>
+  </svg><p class="note">Zonas de borde (1E–6E) en franjas de ancho 2a en los extremos. Para el caso A, el viento puede venir desde cualquiera de las esquinas: considere la franja E en cada extremo por separado.</p>`;
+}
+
+/* ---------------- CONTENEDOR ---------------- */
+function renderCont(g) {
+  const c = { largo: +S.cLargo, ancho: +S.cAncho, alto: +S.cAlto, niveles: Math.max(1, Math.round(+S.cNiv)), hApoyo: +S.cApoyo, peso: +S.cPeso,
+    mu: +S.cMu, gD: +S.cGD, gW: +S.cGW, anclajesLado: Math.max(1, Math.round(+S.cAnc)) };
+  const r = N.contenedor(g, c);
+  const u = U(), kgf = (N_) => N_ / N.G_ACC, FSmin = +S.cFS;
+  $('cStats').innerHTML = stat('Altura total h', nf(r.h, 2), 'm') + stat('Kh', nf(r.Kh, 3)) + stat('qh', nf(u.f(r.qh), u.d), u.u) + stat('Peso total', nf(kgf(r.pesoN), 0), 'kgf');
+  const pill = (fs) => `<span class="pill ${fs >= FSmin ? 'ok' : 'bad'}">${fs >= FSmin ? 'CUMPLE' : 'NO CUMPLE'}</span>`;
+  const fsTxt = (fs) => isFinite(fs) ? nf(fs, 2) : '∞';
+  $('cRes').innerHTML = r.res.map((d) => `<div class="card">
+    <h3>${d.dir === 'transversal' ? 'Viento sobre la cara larga' : 'Viento sobre la cara corta'} <span class="cl">B = ${nf(d.B, 2)} m · L = ${nf(d.L, 2)} m</span></h3>
+    <div class="tbl"><table>
+      <tr class="grp"><td colspan="2">Presiones y fuerzas</td></tr>
+      <tr><td>Cp barlovento / sotavento (L/B = ${nf(d.LB, 2)})</td><td class="n">0,80 / ${nf(d.CpLee, 2)}</td></tr>
+      <tr><td>Presión horizontal neta qh·Kd·G·(0,8 − Cp)</td><td class="n">${P(d.pNeta)} ${u.u}</td></tr>
+      <tr><td>Área expuesta</td><td class="n">${nf(d.Aface, 2)} m²</td></tr>
+      <tr><td>Fuerza horizontal F</td><td class="n">${nf(kgf(d.F), 0)} kgf</td></tr>
+      <tr><td>Levantamiento del techo U (+GCpi)</td><td class="n">${nf(kgf(d.U), 0)} kgf</td></tr>
+      <tr><td>Momento volcante Mo = F·${nf(d.brazoF, 2)} + M(U)</td><td class="n">${nf(kgf(d.Mo), 0)} kgf·m</td></tr>
+      <tr><td>Momento resistente Mr = D·L/2</td><td class="n">${nf(kgf(d.Mr), 0)} kgf·m</td></tr>
+      <tr class="grp"><td colspan="2">Estabilidad (sin anclajes, FS ≥ ${nf(FSmin, 2)})</td></tr>
+      <tr><td>Volcamiento Mr/Mo</td><td class="n">${fsTxt(d.FSv)} ${pill(d.FSv)}</td></tr>
+      <tr><td>Deslizamiento μ(D − U)/F</td><td class="n">${fsTxt(d.FSd)} ${pill(d.FSd)}</td></tr>
+      <tr><td>Levantamiento D/U</td><td class="n">${fsTxt(d.FSu)} ${pill(d.FSu)}</td></tr>
+      <tr class="grp"><td colspan="2">Anclajes (${nf(c.gD, 2)}D + ${nf(c.gW, 2)}W)</td></tr>
+      <tr><td>Tracción en línea de barlovento</td><td class="n">${nf(kgf(d.Tline), 0)} kgf</td></tr>
+      <tr><td>Tracción por anclaje (${c.anclajesLado} por lado)</td><td class="n">${nf(kgf(d.Tanc), 0)} kgf</td></tr>
+      <tr><td>Corte por anclaje (${2 * c.anclajesLado} anclajes, sin roce)</td><td class="n">${nf(kgf(d.Vanc), 0)} kgf</td></tr>
+    </table></div>
+    <p class="note">Techo: zonas por distancia desde el borde de barlovento (${d.tramos.map((t) => `Cp ${nf(t.Cp, 2)} en ${nf(t.x0, 2)}–${nf(t.x1, 2)} m`).join('; ')}).</p>
+  </div>`).join('');
+}
+
+/* ---------------- TECHUMBRE ---------------- */
+function renderTecho(g) {
+  const r = N.techumbre(g, { luz: +S.tLuz, largo: +S.tLargo, hAlero: +S.tAlero, tipoTecho: S.tTecho, theta: +S.tTheta, direccion: S.tDir, xCercha: +S.tX });
+  $('tTheta').disabled = S.tTecho === 'plana';
+  $('tXBox').hidden = S.tDir !== 'paralelo';
+  if (tSel >= r.combos.length) tSel = 0;
+  $('tStats').innerHTML = stat('θ', nf(r.theta, 1), '°') + stat('h media', nf(r.h, 2), 'm') + stat('Kh', nf(r.Kh, 3)) + stat('h/L', nf(r.dirInfo.hL, 3))
+    + stat('q = qh·Kd', nf(r.qOut, 3), 'kPa');
+  $('tCombos').innerHTML = `<thead><tr><th>Caso</th><th class="n">Cpi</th><th class="n">Cp barl.</th><th class="n">Cp sot.</th><th class="n">p barl. [kPa]</th><th class="n">p sot. [kPa]</th></tr></thead><tbody>` +
+    r.combos.map((c, i) => `<tr data-i="${i}" class="${i === tSel ? 'sel' : ''}" tabindex="0"><td>${c.nombre}</td><td class="n">${nf(c.Cpi, 2)}</td><td class="n">${nf(c.CpW, 3)}</td><td class="n">${nf(c.CpL, 3)}</td>
+      <td class="n"><span class="${cls(c.pW)}">${nf(c.pW, 3)}</span></td><td class="n"><span class="${cls(c.pL)}">${nf(c.pL, 3)}</span></td></tr>`).join('') + '</tbody>';
+  const c = r.combos[tSel];
+  $('tHand').innerHTML = [['Presión básica q [kPa]', nf(c.q, 3)], ['Presión interior Cpi', nf(c.Cpi, 2)], ['Cp barlovento', nf(c.CpW, 3)], ['Cp sotavento', nf(c.CpL, 3)]]
+    .map(([a, b]) => `<div class="fld"><span class="lbl">${a}</span><div>${b}</div></div>`).join('') +
+    `<div class="note" style="grid-column:1/-1">Cp entregado = G·Cp (G = ${nf(g.G, 2)}); Cp de tabla: barlovento ${nf(c.CpWraw, 3)}, sotavento ${nf(c.CpLraw, 3)}.</div>`;
+  $('tCopy').onclick = () => copy(`q=${c.q.toFixed(3)}\tCpi=${c.Cpi.toFixed(2)}\tCp barlovento=${c.CpW.toFixed(3)}\tCp sotavento=${c.CpL.toFixed(3)}`, 'Valores copiados');
+  const vals = { ww: 0, lw: 0, rw: c.pW * 1000, rl: c.pL * 1000 };
+  $('tDia').innerHTML = elevacion({ ancho: +S.tLuz, hAlero: +S.tAlero, rise: r.rise, tipo: S.tTecho, vals, soloTecho: true,
+    u: { u: 'kPa', f: (p) => p / 1000, d: 3 }, titulo: 'Presión neta sobre la techumbre · caso seleccionado' });
+}
+$('tCombos').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-i]'); if (tr) { tSel = +tr.dataset.i; render(); } });
+$('tCombos').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const tr = e.target.closest('tr[data-i]'); if (tr) { tSel = +tr.dataset.i; render(); } } });
+
+/* ---------------- ciclo ---------------- */
+function render() {
+  const g = general();
+  renderGeneral(g);
+  renderGalpon(g);
+  renderSimple(g);
+  renderCont(g);
+  renderTecho(g);
+}
+toUI();
+setUnit(unit);
+setTab(tab);
+})();
+</script>
