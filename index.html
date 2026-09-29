@@ -315,14 +315,13 @@ dialog.proj textarea { width: 100%; min-height: 180px; font-family: var(--font-m
     <div id="gAnaRes"></div>
     <div class="tbl"><table id="gAnaT"></table></div>
   </div>
-  <div class="card"><h3>Cargas para SAP <span class="cl">carga lineal por marco, kgf/m o kN/m según unidades</span></h3>
-    <p class="note" style="margin-top:0" id="gSapNota"></p>
-    <div id="gSap" style="display:grid;gap:18px"></div>
-  </div>
-  <div class="card"><h3>Presiones por caso · planta y elevación
-      <label class="f act" style="min-width:min(100%,360px)"><select id="gVista" aria-label="Caso a visualizar"></select></label></h3>
+  <div class="card" id="gEstadoCard"><h3>Estado a ingresar en SAP
+      <label class="f act" style="min-width:min(100%,420px)"><select id="gVista" aria-label="Estado de análisis"></select></label></h3>
+    <div id="gEstTabs" class="seg" role="group" aria-label="Estados de análisis" style="margin-bottom:12px;flex-wrap:wrap"></div>
     <p class="note" id="gVistaDesc" style="margin-top:0"></p>
     <div style="display:grid;gap:10px"><div id="gVP"></div><div id="gVS"></div></div><div class="legend"><span><i style="background:var(--pres)"></i>presión (+), hacia la superficie</span><span><i style="background:var(--succ)"></i>succión (−), alejándose</span></div>
+    <div id="gSap" style="margin-top:16px"></div>
+    <p class="note" id="gSapNota"></p>
   </div>
   <div class="card" id="gDiafNo"><h3><span class="cl">6.3.5</span> Casos 2 a 4 de la Fig. 11 no aplicados</h3><p class="note" style="margin:0" id="gDiafNoTxt"></p></div>
   <details class="card fold gDiafSi"><summary>Casos de diseño 2, 3 y 4 de la Fig. 11 · combinaciones para el modelo 3D</summary><div class="foldbody">
@@ -620,6 +619,7 @@ function cargarProyecto(texto) {
   const dl = $('dProj'); if (dl.open) { try { dl.close(); } catch (e) { dl.removeAttribute('open'); } }
   toast('Proyecto cargado' + (d.nombre ? ': ' + d.nombre : ''));
 }
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-est]'); if (!b) return; S.gVista = b.dataset.est; save(); render(); });
 $('bGuardar').onclick = () => { $('dNombre').value = S.proyecto || ''; abrirDialogo('guardar'); };
 $('bAbrir').onclick = () => abrirDialogo('abrir');
 $('dNombre').addEventListener('input', () => { S.proyecto = $('dNombre').value; save(); $('dJson').value = textoProyecto(); });
@@ -1044,12 +1044,12 @@ function renderSAP(r, an, geo, anexo) {
     return `Ejes ${rangoEjes(g.marcos)}<br><span class="sub">${tipo} · trib. ${fm(g.marcos[0].trib)} m</span>`;
   };
   const cel = (vs) => vs.map((v) => `${Wl(v.w)}${vs.length > 1 ? ` <span class="sub">(x ${fm(v.a)}–${fm(v.b)})</span>` : ''}`).join('<br>');
-  $('gSap').innerHTML = an.sel.map(({ c }, k) => {
+  $('gSap').innerHTML = an.sel.filter(({ c }) => c.sap === S.gVista).map(({ c }, k) => {
     const d = N.cargasSAP(r, c, geo);
     const gcpi = anexo ? '' : ` · GCpi ${c.gcpi > 0 ? '+' : '−'}${nf(Math.abs(c.gcpi), 2)}`;
     const tit = `${c.dir === 'X' ? 'Dirección X' : 'Dirección Y'} · ${c.nombre}${gcpi}`;
     const fr = d.frontones ? `<p class="note">Frontones (pilares, no van en el marco transversal): barlovento ${P(d.frontones.barl.p)} y sotavento ${P(d.frontones.sot.p)} ${u.u}. En el marco extremo, el frontón se modela con sus propios pilares; ver "Pilares de frontón" en el detalle.</p>` : '';
-    return `<div><h4 class="sub4">${tit} <span class="cl">${c.sap} · ${c.variante.nombre}</span><button class="btn act" type="button" data-copy="gSapT${k}">Copiar tabla</button></h4>
+    return `<div><h4 class="sub4">Cargas para SAP · ${tit} <span class="cl">${c.sap} · ${c.variante.nombre}</span><button class="btn act" type="button" data-copy="gSapT${k}">Copiar tabla</button></h4>
       <div class="tbl"><table id="gSapT${k}"><thead><tr><th>Elemento</th><th>Se aplica en</th>${d.grupos.map((g) => `<th class="n" style="text-transform:none">${grupoTxt(g, d.grupos)}</th>`).join('')}</tr></thead><tbody>
       ${d.filas.map((f) => `<tr><td>${f.el}</td><td class="sub">${f.ref}</td>${d.grupos.map((g) => `<td class="n">${cel(f.f(g))}</td>`).join('')}</tr>`).join('')}
       </tbody></table></div>${fr}</div>`;
@@ -1126,7 +1126,10 @@ function renderGalpon(g) {
   $('gDiafNo').hidden = !!S.gDiaf;
   $('gDiafNoTxt').innerHTML = 'La Fig. 11 (6.3.5) agrega casos con torsión por excentricidad ±0,15B (caso 2), viento simultáneo en X e Y al 75 % (caso 3) y ambos combinados (caso 4). Son análogos a la torsión accidental de la NCh 433 y se aplican sobre un diafragma por nivel. En un galpón de un nivel sin diafragma rígido (techo con arriostramiento flexible) no se aplican aquí; el análisis se hace con los estados de la tabla (caso 1). Active la opción de Geometría si la estructura tiene 2 o más niveles o un diafragma rígido: entonces se muestran las combinaciones para SAP, los momentos torsores por nivel y las cargas por marco de los casos 2 a 4.';
   const selS = an.sel.map((x) => x.c.sap);
-  vistaCasos(r, geo, 'gVista', 'gVP', 'gVS', 'gVistaDesc', 'gVista', selS);
+  const rSel = { casos: an.sel.map((x) => x.c), rise: r.rise, metodo: r.metodo };
+  vistaCasos(rSel, geo, 'gVista', 'gVP', 'gVS', 'gVistaDesc', 'gVista');
+  S.gVista = $('gVista').value;
+  $('gEstTabs').innerHTML = an.sel.map(({ c }) => `<button type="button" data-est="${c.sap}" aria-pressed="${c.sap === S.gVista}">${c.sap}</button>`).join('');
   renderAnalisis(r, an, geo, anexo);
 
   // Envolvente y resultantes
@@ -1177,6 +1180,14 @@ function renderGalpon(g) {
 function geoSimple() {
   return { largo: +S.sLargo, ancho: +S.sAncho, hAlero: +S.sAlero, tipoTecho: S.sTecho, theta: +S.sTheta, ejesY: null, ejesX: null };
 }
+// Elimina casos espejo: misma dirección y mismos coeficientes en muros y techo (sólo cambia el sentido de aplicación)
+function sinEspejos(casos) {
+  const vistos = new Set();
+  return casos.filter((c) => {
+    const k = c.dir + '|' + c.muros.map((m) => m.Cp.toFixed(3)).sort().join(',') + '|' + c.techo.map((t) => t.Cp.toFixed(3)).sort().join(',');
+    if (vistos.has(k)) return false; vistos.add(k); return true;
+  });
+}
 function renderSimple(g) {
   const geo = geoSimple(), u = U();
   const anexo = S.sMetodo !== 'cap7';
@@ -1191,9 +1202,10 @@ function renderSimple(g) {
     const r = N.anexoA(gA(g), geo, { frontal060: !!S.sF060 });
     $('sStats').innerHTML = stat('θ', nf(r.theta, 1), '°') + stat('h', fm(r.h), 'm') + stat('p0', nf(u.f(r.p0), u.d), u.u) + stat('Kz(h)', nf(r.Kh, 3)) + stat('pz = p0·Kz', nf(u.f(r.pz), u.d), u.u);
     $('sChecks').innerHTML = r.checks.map((c) => pillOk(c.ok, c.txt)).join(' ') + `<div style="width:100%"></div>` + trazaAnexo(r, S.sTecho).replace(/^<p class="note" style="margin-top:0">Condiciones de A.0:<\/p><div[^>]*>[\s\S]*?<\/div>/, '');
-    vistaCasos(r, geo, 'sVista', 'sVP', 'sVS', 'sVistaDesc', 'sVista');
-    $('sDirX').innerHTML = tablasDir(r, true, 'X', 'sCX');
-    $('sDirY').innerHTML = tablasDir(r, true, 'Y', 'sCY');
+    const rU = Object.assign({}, r, { casos: sinEspejos(r.casos) });
+    vistaCasos(rU, geo, 'sVista', 'sVP', 'sVS', 'sVistaDesc', 'sVista');
+    $('sDirX').innerHTML = tablasDir(rU, true, 'X', 'sCX');
+    $('sDirY').innerHTML = tablasDir(rU, true, 'Y', 'sCY');
   } else {
     const r = N.simplificado(g, geo, { sinKd: !S.sKd });
     $('sStats').innerHTML = stat('θ', nf(r.theta, 1), '°') + stat('h media', nf(r.h, 2), 'm') + stat('Kh', nf(r.Kh, 3)) + stat('qh', nf(u.f(r.qh), u.d), u.u)
