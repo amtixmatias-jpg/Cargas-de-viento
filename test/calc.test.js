@@ -99,3 +99,26 @@ console.log('OK – todas las verificaciones pasaron');
   assert.ok(k.res.every((d) => d.F >= d.Fmin && isFinite(d.FSv)));
   console.log('OK – Anexo A');
 }
+
+// ---- Ejes, marcos (Fig. 11) y C&R ----
+{
+  const e = N.parseEjes('5.2, 6*6.9, 5.2');
+  near(e.total, 51.8, 1e-9, 'largo por ejes'); assert.strictEqual(e.pos.length, 9);
+  assert.ok(N.parseEjes('5, abc').error);
+  const r = N.galponSAP(g, { largo: e.total, ancho: 13.9, hAlero: 6.4, tipoTecho: 'dos', theta: 10, ejesY: e.pos, ejesX: [0, 6.95, 13.9] });
+  near(r.marcos[0].trib, 2.6, 1e-9, 'trib marco extremo'); near(r.marcos[1].trib, 6.05, 1e-9, 'trib marco 2');
+  near(r.pilares[1].trib, 6.95, 1e-9, 'trib pilar B');
+  const mc = r.marcos[4]; // marco central: f(y) = 1
+  const cm = N.casosMarco(r, mc, e.total);
+  assert.deepStrictEqual([cm.c1.length, cm.c2.length, cm.c3.length, cm.c4.length], [16, 24, 16, 32]);
+  const c1 = cm.c1.find((x) => x.nombre === 'C1·WXP_1'), c2 = cm.c2.find((x) => x.nombre === 'C2·WXP_1·e+');
+  near(c2.colXm, 0.75 * c1.colXm, 1e-6, 'caso 2 marco central = 0,75');
+  near(c2.vigas[0].w, 0.75 * c1.vigas[0].w, 1e-6, 'caso 2 techo 0,75');
+  const c3 = cm.c3.find((x) => x.nombre === 'C3·+X+Y·Pi+·TS');
+  const minRoof = Math.min(...cm.c1.filter((x) => /WXP_[12]|WYP_[12]/.test(x.nombre) && !/_[34]/.test(x.nombre)).flatMap((x) => x.vigas.map((v) => v.w)));
+  assert.ok(Math.min(...c3.vigas.map((v) => v.w)) <= minRoof + 1e-6, 'caso 3 techo = máxima succión');
+  // C&R muros Fig. 24
+  near(N.GCpMuro(4, 0.5, 20).neg, -1.1, 1e-12, 'GCp z4 A pequeña'); near(N.GCpMuro(5, 100, 20).neg, -0.8, 1e-12, 'GCp z5 A grande');
+  near(N.GCpMuro(4, 0.5, 5).pos, 0.9, 1e-12, 'reducción 10 % θ ≤ 10°');
+  console.log('OK – ejes, marcos y C&R');
+}

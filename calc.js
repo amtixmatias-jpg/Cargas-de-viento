@@ -493,7 +493,7 @@
       }
     }
 
-    const post = procesarCasos(casos, { tipo, rad, S, Lg, hAlero: geo.hAlero, rise, Awall, Agable, sepMarcos: +geo.sepMarcos });
+    const post = procesarCasos(casos, { tipo, rad, S, Lg, hAlero: geo.hAlero, rise, Awall, Agable, sepMarcos: +geo.sepMarcos, ejesY: geo.ejesY, ejesX: geo.ejesX });
     return Object.assign({
       metodo: 'cap6', theta: th, h, rise, Kh: qH.Kz, qh, hLx, hLy, CpLeeX, CpLeeY, ww, lw, zonasX, zonasY, fbX, fbY,
       traza: slopeRoof ? trazaCpTecho(th, hLx) : null, slopeRoof, Awall, Agable, casos,
@@ -569,17 +569,24 @@
     const maxFx = Math.max(...casos.map((c) => Math.abs(c.Fx))), maxFy = Math.max(...casos.map((c) => Math.abs(c.Fy)));
     minimo.cumpleX = maxFx >= minimo.X; minimo.cumpleY = maxFy >= minimo.Y; minimo.maxFx = maxFx; minimo.maxFy = maxFy;
 
-    // Cargas en marcos transversales (plano XZ), separados sepMarcos a lo largo de Y
-    const sep = +ctx.sepMarcos;
+    // Cargas en marcos transversales (plano XZ): ejes numerados a lo largo de Y (posiciones libres)
     const marcos = [];
-    if (sep > 0) {
-      const nEsp = Math.max(1, Math.round(Lg / sep));
-      for (let i = 0; i <= nEsp; i++) {
-        const y = Math.min(i * sep, Lg);
-        const a = Math.max(0, y - sep / 2), b = Math.min(Lg, y + sep / 2);
-        marcos.push({ i: i + 1, y, a, b, trib: b - a });
-      }
+    let posY = Array.isArray(ctx.ejesY) && ctx.ejesY.length >= 2 ? ctx.ejesY.slice() : null;
+    if (!posY && +ctx.sepMarcos > 0) {
+      const nEsp = Math.max(1, Math.round(Lg / ctx.sepMarcos));
+      posY = []; for (let i = 0; i <= nEsp; i++) posY.push(Math.min(i * ctx.sepMarcos, Lg));
     }
+    if (posY) posY.forEach((y, i) => {
+      const a = i === 0 ? 0 : (posY[i - 1] + y) / 2, b = i === posY.length - 1 ? Lg : (y + posY[i + 1]) / 2;
+      marcos.push({ i: i + 1, eje: String(i + 1), y, a, b, trib: b - a });
+    });
+    // Pilares de frontón: ejes con letra a lo largo de X
+    const pilares = [];
+    const posX = Array.isArray(ctx.ejesX) && ctx.ejesX.length >= 2 ? ctx.ejesX : [0, S];
+    posX.forEach((x, i) => {
+      const a = i === 0 ? 0 : (posX[i - 1] + x) / 2, b = i === posX.length - 1 ? S : (x + posX[i + 1]) / 2;
+      pilares.push({ i: i + 1, eje: letraEje(i), x, a, b, trib: b - a });
+    });
     function cargaMarco(c, mc) {
       const wm = (sup) => c.muros.find((m) => m.sup === sup).p * mc.trib;
       const res = { colXm: wm('Muro X−'), colXp: wm('Muro X+'), vigas: [] };
@@ -600,7 +607,136 @@
       }
       return res;
     }
-    return { env: Object.values(env), gobiernan, torsion, minimo, marcos, cargaMarco };
+    return { env: Object.values(env), gobiernan, torsion, minimo, marcos, pilares, cargaMarco };
+  }
+
+  /** Letra de eje longitudinal: A, B, …, Z, AA, AB… */
+  function letraEje(i) { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+
+  /**
+   * Lee separaciones de ejes: "5, 3*6, 5" o "5 3x6 5" → [5,6,6,6,5]. Devuelve { sep, pos, total, error }.
+   */
+  function parseEjes(txt) {
+    const sep = [];
+    const tokens = String(txt || '').replace(/;/g, ',').split(/[,\s]+/).filter(Boolean);
+    for (const t of tokens) {
+      const m = t.replace(',', '.').match(/^(\d+)\s*[*xX]\s*([\d.]+)$/);
+      if (m) { for (let k = 0; k < +m[1]; k++) sep.push(+m[2]); continue; }
+      const v = parseFloat(t.replace(',', '.'));
+      if (!(v > 0)) return { sep: [], pos: [], total: 0, error: 'No se entiende "' + t + '"' };
+      sep.push(v);
+    }
+    const pos = [0]; for (const d of sep) pos.push(round(pos[pos.length - 1] + d, 6));
+    return { sep, pos, total: pos[pos.length - 1], error: sep.length ? '' : 'Ingrese al menos una separación' };
+  }
+
+  /**
+   * Cargas por marco para los 4 casos de diseño de la Fig. 11 (6.3.5).
+   * Criterio: los factores se aplican a la presión de diseño p de cada patrón (Ec. 4, incluye GCpi).
+   *  Caso 1: cada patrón al 100 %.
+   *  Caso 2: muros 0,75·p con torsión; en un marco transversal la excentricidad e = ±0,15B se representa con el
+   *          bloque de presión equivalente (nota 4): f(y) = 1 ± 1,8 (y/L − 0,5) en los muros X. Techo 0,75·p (caso 1).
+   *  Caso 3: 0,75·muros WX + 0,75·muros WY simultáneos; techo = 100 % del mayor valor del caso 1 (nota 2).
+   *  Caso 4: 0,563·muros WX (con torsión) + 0,563·muros WY; techo = 100 % del mayor valor del caso 2 (0,75 del caso 1).
+   * El "mayor valor" del techo se evalúa en dos variantes: máxima succión (mín. algebraico) y máxima presión.
+   */
+  function casosMarco(r, mc, Lg) {
+    const L = (c) => r.cargaMarco(c, mc);
+    const xs = r.casos.filter((c) => c.dir === 'X'), ys = r.casos.filter((c) => c.dir === 'Y');
+    const out = { c1: [], c2: [], c3: [], c4: [] };
+    const scaleV = (v, f) => v.map((t) => ({ faldon: t.faldon, a: t.a, b: t.b, w: t.w * f }));
+    const fy = (es) => 1 + es * 1.8 * (mc.y / Lg - 0.5);
+    for (const c of r.casos) { const l = L(c); out.c1.push({ nombre: 'C1·' + c.sap, desc: c.desc, colXm: l.colXm, colXp: l.colXp, vigas: l.vigas }); }
+    for (const c of xs) for (const es of [1, -1]) {
+      const l = L(c), f = 0.75 * fy(es);
+      out.c2.push({ nombre: 'C2·' + c.sap + '·e' + (es > 0 ? '+' : '−'), desc: '0,75 · ' + c.desc + ', excentricidad ' + (es > 0 ? '+' : '−') + '0,15B (f = ' + fy(es).toFixed(2) + ')',
+        colXm: l.colXm * f, colXp: l.colXp * f, vigas: scaleV(l.vigas, 0.75) });
+    }
+    for (const c of ys) { const l = L(c); out.c2.push({ nombre: 'C2·' + c.sap, desc: '0,75 · ' + c.desc, colXm: 0.75 * l.colXm, colXp: 0.75 * l.colXp, vigas: scaleV(l.vigas, 0.75) }); }
+    // techo envolvente entre varios conjuntos de vigas
+    function envTecho(sets, modo, f) {
+      const halves = {};
+      for (const vs of sets) for (const v of vs) (halves[v.faldon] = halves[v.faldon] || []).push(v);
+      const res = [];
+      for (const fal of Object.keys(halves)) {
+        const segs = halves[fal];
+        const cuts = [...new Set(segs.flatMap((v) => [v.a, v.b]).map((x) => round(x, 6)))].sort((a, b) => a - b);
+        for (let i = 0; i < cuts.length - 1; i++) {
+          const m = (cuts[i] + cuts[i + 1]) / 2;
+          const vals = sets.map((vs) => { const v = vs.find((t) => t.faldon === fal && m >= t.a - 1e-9 && m <= t.b + 1e-9); return v ? v.w : 0; });
+          const w = (modo === 'S' ? Math.min(...vals) : Math.max(...vals)) * f;
+          const last = res[res.length - 1];
+          if (last && last.faldon === fal && Math.abs(last.w - w) < 1e-9 && Math.abs(last.b - cuts[i]) < 1e-9) last.b = cuts[i + 1];
+          else res.push({ faldon: fal, a: cuts[i], b: cuts[i + 1], w });
+        }
+      }
+      return res;
+    }
+    const signos = r.casos.some((c) => c.gcpi !== 0) ? [1, -1] : [0];
+    for (const sx of [1, -1]) for (const sy of [1, -1]) for (const sg of signos) {
+      const cx = xs.filter((c) => c.sentido === sx && Math.sign(c.gcpi) === sg);
+      const cy = ys.filter((c) => c.sentido === sy && Math.sign(c.gcpi) === sg);
+      if (!cx.length || !cy.length) continue;
+      const lx = L(cx[0]), ly = L(cy[0]);
+      const techos = [...cx, ...cy].map((c) => L(c).vigas);
+      const tag = (sx > 0 ? '+X' : '−X') + (sy > 0 ? '+Y' : '−Y') + (sg > 0 ? '·Pi+' : sg < 0 ? '·Pi−' : '');
+      for (const modo of ['S', 'P']) {
+        out.c3.push({ nombre: 'C3·' + tag + '·T' + modo, desc: '0,75·muros ' + (sx > 0 ? '+' : '−') + 'WX + 0,75·muros ' + (sy > 0 ? '+' : '−') + 'WY; techo 100 % máx. ' + (modo === 'S' ? 'succión' : 'presión') + ' del caso 1',
+          colXm: 0.75 * (lx.colXm + ly.colXm), colXp: 0.75 * (lx.colXp + ly.colXp), vigas: envTecho(techos, modo, 1) });
+        for (const es of [1, -1]) {
+          const f = 0.563 * fy(es);
+          out.c4.push({ nombre: 'C4·' + tag + '·T' + modo + '·e' + (es > 0 ? '+' : '−'), desc: '0,563·muros ' + (sx > 0 ? '+' : '−') + 'WX (f = ' + fy(es).toFixed(2) + ') + 0,563·muros ' + (sy > 0 ? '+' : '−') + 'WY; techo 100 % máx. ' + (modo === 'S' ? 'succión' : 'presión') + ' del caso 2',
+            colXm: f * lx.colXm + 0.563 * ly.colXm, colXp: f * lx.colXp + 0.563 * ly.colXp, vigas: envTecho(techos, modo, 0.75) });
+        }
+      }
+    }
+    // Envolvente por elemento para cada caso
+    const envol = {};
+    for (const k of Object.keys(out)) {
+      const e = {};
+      const upd = (key, v, n) => { const o = e[key] || (e[key] = { max: -Infinity, min: Infinity, nmax: '', nmin: '' }); if (v > o.max) { o.max = v; o.nmax = n; } if (v < o.min) { o.min = v; o.nmin = n; } };
+      for (const it of out[k]) {
+        upd('colXm', it.colXm, it.nombre); upd('colXp', it.colXp, it.nombre);
+        for (const v of it.vigas) upd('viga' + v.faldon, v.w, it.nombre);
+      }
+      envol[k] = e;
+    }
+    return Object.assign(out, { envol });
+  }
+
+  /**
+   * Componentes y revestimientos en muros (cap. 9, Parte 1, Fig. 24; h ≤ 18,3 m).
+   * GCp según área efectiva A (interpolación en log A): zonas 4 y 5; reducción 10 % si θ ≤ 10° (nota 5).
+   * p = qh·Kd·[(GCp) − (GCpi)] (Ec. 19); mínimo neto 0,25 kN/m² (9.2.2).
+   * el = { H: altura del elemento (luz), s: separación/ancho tributario }
+   */
+  function GCpMuro(zona, A, th) {
+    const la = Math.log10(Math.min(Math.max(A, 0.9), 46.5));
+    const t = (la - Math.log10(0.9)) / (Math.log10(46.5) - Math.log10(0.9));
+    const pos = 1.0 + t * (0.7 - 1.0);
+    const neg = zona === 5 ? -1.4 + t * (-0.8 + 1.4) : -1.1 + t * (-0.8 + 1.1);
+    const red = th <= 10 ? 0.9 : 1;
+    return { pos: pos * red, neg: neg * red, red };
+  }
+  function cyrMuro(g, geo, el) {
+    const th = geo.tipoTecho === 'plana' ? 0 : +geo.theta;
+    const rad = th * Math.PI / 180;
+    const rise = geo.tipoTecho === 'dos' ? (geo.ancho / 2) * Math.tan(rad) : geo.tipoTecho === 'una' ? geo.ancho * Math.tan(rad) : 0;
+    const h = th <= 10 ? geo.hAlero : geo.hAlero + rise / 2;
+    const qh = qz(g, h).q;
+    const menor = Math.min(geo.largo, geo.ancho);
+    let a = Math.max(Math.min(0.1 * menor, 0.4 * h), 0.04 * menor, 0.9);
+    if (th <= 7 && menor > 90) a = Math.min(a, 0.8 * h);
+    const A = el.H * Math.max(el.s, el.H / 3); // 3.4: ancho efectivo ≥ luz/3
+    const zonas = [4, 5].map((z) => {
+      const c = GCpMuro(z, A, th);
+      let pmax = qh * g.Kd * (c.pos + g.GCpi), pmin = qh * g.Kd * (c.neg - g.GCpi);
+      const minP = pmax < 250, minN = -pmin < 250;
+      pmax = Math.max(pmax, 250); pmin = Math.min(pmin, -250);
+      return { zona: z, GCpPos: c.pos, GCpNeg: c.neg, pmax, pmin, minP, minN,
+        wmax: pmax * el.s, wmin: pmin * el.s, Mmax: Math.max(pmax, -pmin) * el.s * el.H * el.H / 8, R: Math.max(pmax, -pmin) * el.s * el.H / 2 };
+    });
+    return { h, qh, a, A, red: th <= 10, zonas, aplica: h <= 18.3 };
   }
 
   /* ================= Anexo A: método simplificado para el SPRFV ================= */
@@ -682,7 +818,7 @@
     }
     const Awall = { 'Muro X−': Lg * geo.hAlero, 'Muro X+': Lg * (geo.hAlero + (tipo === 'una' ? rise : 0)) };
     const Agable = S * geo.hAlero + S * rise / 2;
-    const post = procesarCasos(casos, { tipo: tipo === 'plana' ? 'una' : tipo, rad, S, Lg, hAlero: geo.hAlero, rise, Awall, Agable, sepMarcos: +geo.sepMarcos });
+    const post = procesarCasos(casos, { tipo: tipo === 'plana' ? 'una' : tipo, rad, S, Lg, hAlero: geo.hAlero, rise, Awall, Agable, sepMarcos: +geo.sepMarcos, ejesY: geo.ejesY, ejesX: geo.ejesX });
     return Object.assign({ metodo: 'anexoA', theta: th, h, rise, Kh: kz, p0, pz, qh: pz, checks, aplica: checks.every((c) => c.ok), casos, CA1: CA1(th), CA2: CA2(th), Awall, Agable }, post);
   }
 
@@ -768,8 +904,10 @@
       const brazoF = c.hApoyo + H / 2;
       const Fsup = c.hApoyo > 0 ? qs * Kd * G * 1.3 * (+c.Asup || 0) : 0;
       const brazoSup = c.hApoyo / 2;
-      let tramos, U = 0, MU = 0;
-      if (anexo) {
+      let tramos = [], U = 0, MU = 0;
+      if (c.techo === false) {
+        // techo despreciado: sin levantamiento
+      } else if (anexo) {
         tramos = [{ x0: 0, x1: L, Cp: -0.85 }]; // Fig. A.2, θ = 0: caso 1A en succión
         for (const t of tramos) { const up = -qh * t.Cp * (t.x1 - t.x0) * B; U += up; MU += up * (L - (t.x0 + t.x1) / 2); }
       } else {
@@ -789,7 +927,18 @@
       const Tline = Math.max(0, (c.gW * Mo - c.gD * Mr) / L);
       const Tanc = Tline / c.anclajesLado;
       const Vanc = (c.gW * Ft) / (2 * c.anclajesLado);
-      res.push({ dir, B, L, hL, LB, CpW, CpLee, pNeta, Aface, Fcalc, Fmin, F, Fsup, brazoF, U, MU, Mo, Mr, FSv, FSd, FSu, Tline, Tanc, Vanc, tramos });
+      // Presiones en las caras por nivel (costados). Cap. 6: barlovento con qz al tope de cada nivel.
+      const niveles = [];
+      for (let k = 1; k <= c.niveles; k++) {
+        const z0 = c.hApoyo + (k - 1) * c.alto, z1 = c.hApoyo + k * c.alto;
+        const qW = anexo ? qh : qz(g, z1).q;
+        const pi = anexo ? 0 : qh * Kd * GCpi;
+        const ext = (q, Cp) => anexo ? q * Cp : q * Kd * G * Cp;
+        const cara = (q, Cp) => ({ Cp, pos: ext(q, Cp) - pi, neg: ext(q, Cp) + pi });
+        const barl = cara(qW, CpW), sot = cara(qh, CpLee), lat = cara(qh, anexo ? -0.6 : -0.7);
+        niveles.push({ k, z0, z1, qW, barl, sot, lat, Fh: (ext(qW, CpW) - ext(qh, CpLee)) * B * c.alto });
+      }
+      res.push({ dir, B, L, hL, LB, CpW, CpLee, pNeta, Aface, Fcalc, Fmin, F, Fsup, brazoF, U, MU, Mo, Mr, FSv, FSd, FSu, Tline, Tanc, Vanc, tramos, niveles });
     }
     const checksA = [
       { ok: g.cat === 'I' || g.cat === 'II', txt: 'Categoría I o II' },
@@ -889,7 +1038,7 @@
     G_ACC, ZONAS, IMPORTANCIA, KD, EXPOSICION, TERRENO, TABLA5, TABLA4, CERRAMIENTO, TOPO,
     lerp, round, Nm2_to_kgf, Kz, Ke, Kzt, qz, clasificarCerramiento, Ri,
     CpSotavento, CpTechoBarlovento, CpTechoSotavento, CpTechoZona, zonasTecho, CpZonaPromedio,
-    GCpfA, ENV_A, ENV_B, direccional, galponSAP, anexoA, CA1, CA2, procesarCasos, trazaCpTecho, redArea, simplificado, contenedor, techumbre,
+    GCpfA, ENV_A, ENV_B, direccional, galponSAP, anexoA, CA1, CA2, procesarCasos, parseEjes, letraEje, casosMarco, cyrMuro, GCpMuro, trazaCpTecho, redArea, simplificado, contenedor, techumbre,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NCh432 = api;
