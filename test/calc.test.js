@@ -154,3 +154,19 @@ console.log('OK – todas las verificaciones pasaron');
   assert.deepStrictEqual(N.analisisGalpon(ra, geo).sel.map((x) => x.c.sap), ['WXP_1', 'WYP_1']);
   console.log('OK – estados y cargas SAP');
 }
+
+// ---- Caso 3 por marco y torsión por nivel ----
+{
+  const e = N.parseEjes('5.2, 6*6.9, 5.2');
+  const geo = { largo: e.total, ancho: 13.9, hAlero: 6.4, tipoTecho: 'dos', theta: 10, ejesY: e.pos, ejesX: [0, 6.95, 13.9] };
+  const r = N.galponSAP(g, geo);
+  const cx = r.casos.find((c) => c.sap === 'WXP_1'), cy = r.casos.find((c) => c.sap === 'WYP_1');
+  const d = N.cargasCaso3(r, cx, cy, 'S', geo);
+  const mc = r.marcos[4], lx = r.cargaMarco(cx, mc), ly = r.cargaMarco(cy, mc);
+  const gr = d.grupos.find((q) => q.marcos.includes(mc));
+  near(gr.l.colXm, 0.75 * (lx.colXm + ly.colXm), 1e-6, 'caso 3 columna');
+  const n2 = N.torsionNiveles(cx, cy, geo, [3.5, 3.0], 0.75);
+  near(n2[0].htrib, 3.25, 1e-12, 'h trib nivel 1'); near(n2[1].htrib, 1.5, 1e-12, 'h trib nivel 2');
+  near(n2[0].X.Mz, n2[0].X.F * 0.15 * e.total, 1e-6, 'Mz = F e');
+  console.log('OK – caso 3 y torsión por nivel');
+}

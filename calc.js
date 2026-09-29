@@ -630,6 +630,26 @@
     return { sep, pos, total: pos[pos.length - 1], error: sep.length ? '' : 'Ingrese al menos una separación' };
   }
 
+  // techo envolvente entre varios conjuntos de vigas
+  function envTecho(sets, modo, f) {
+    const halves = {};
+    for (const vs of sets) for (const v of vs) (halves[v.faldon] = halves[v.faldon] || []).push(v);
+    const res = [];
+    for (const fal of Object.keys(halves)) {
+      const segs = halves[fal];
+      const cuts = [...new Set(segs.flatMap((v) => [v.a, v.b]).map((x) => round(x, 6)))].sort((a, b) => a - b);
+      for (let i = 0; i < cuts.length - 1; i++) {
+        const m = (cuts[i] + cuts[i + 1]) / 2;
+        const vals = sets.map((vs) => { const v = vs.find((t) => t.faldon === fal && m >= t.a - 1e-9 && m <= t.b + 1e-9); return v ? v.w : 0; });
+        const w = (modo === 'S' ? Math.min(...vals) : Math.max(...vals)) * f;
+        const last = res[res.length - 1];
+        if (last && last.faldon === fal && Math.abs(last.w - w) < 1e-9 && Math.abs(last.b - cuts[i]) < 1e-9) last.b = cuts[i + 1];
+        else res.push({ faldon: fal, a: cuts[i], b: cuts[i + 1], w });
+      }
+    }
+    return res;
+  }
+
   /**
    * Cargas por marco para los 4 casos de diseño de la Fig. 11 (6.3.5).
    * Criterio: los factores se aplican a la presión de diseño p de cada patrón (Ec. 4, incluye GCpi).
@@ -653,25 +673,6 @@
         colXm: l.colXm * f, colXp: l.colXp * f, vigas: scaleV(l.vigas, 0.75) });
     }
     for (const c of ys) { const l = L(c); out.c2.push({ nombre: 'C2·' + c.sap, desc: '0,75 · ' + c.desc, colXm: 0.75 * l.colXm, colXp: 0.75 * l.colXp, vigas: scaleV(l.vigas, 0.75) }); }
-    // techo envolvente entre varios conjuntos de vigas
-    function envTecho(sets, modo, f) {
-      const halves = {};
-      for (const vs of sets) for (const v of vs) (halves[v.faldon] = halves[v.faldon] || []).push(v);
-      const res = [];
-      for (const fal of Object.keys(halves)) {
-        const segs = halves[fal];
-        const cuts = [...new Set(segs.flatMap((v) => [v.a, v.b]).map((x) => round(x, 6)))].sort((a, b) => a - b);
-        for (let i = 0; i < cuts.length - 1; i++) {
-          const m = (cuts[i] + cuts[i + 1]) / 2;
-          const vals = sets.map((vs) => { const v = vs.find((t) => t.faldon === fal && m >= t.a - 1e-9 && m <= t.b + 1e-9); return v ? v.w : 0; });
-          const w = (modo === 'S' ? Math.min(...vals) : Math.max(...vals)) * f;
-          const last = res[res.length - 1];
-          if (last && last.faldon === fal && Math.abs(last.w - w) < 1e-9 && Math.abs(last.b - cuts[i]) < 1e-9) last.b = cuts[i + 1];
-          else res.push({ faldon: fal, a: cuts[i], b: cuts[i + 1], w });
-        }
-      }
-      return res;
-    }
     const signos = r.casos.some((c) => c.gcpi !== 0) ? [1, -1] : [0];
     for (const sx of [1, -1]) for (const sy of [1, -1]) for (const sg of signos) {
       const cx = xs.filter((c) => c.sentido === sx && Math.sign(c.gcpi) === sg);
@@ -832,7 +833,7 @@
     };
     const crit = {};
     for (const m of marcosRes) {
-      const env = envolverItems((diaf ? [...m.cm.c1, ...m.cm.c2, ...m.cm.c3, ...m.cm.c4] : m.cm.c1).filter((it) => okNombre(it.nombre)));
+      const env = envolverItems((diaf ? [...m.cm.c1, ...m.cm.c2, ...m.cm.c3, ...m.cm.c4] : [...m.cm.c1, ...m.cm.c3]).filter((it) => okNombre(it.nombre)));
       m.env = env;
       for (const [el, o] of Object.entries(env)) {
         const v = Math.max(o.max, -o.min);
@@ -901,6 +902,53 @@
     }
     const fr = c.dir === 'Y' ? { barl: c.muros.find((m) => m.rol === 'barlovento'), sot: c.muros.find((m) => m.rol === 'sotavento') } : null;
     return { grupos, filas, frontones: fr, ancho: S_ };
+  }
+
+  /**
+   * Caso 3 de la Fig. 11 para marcos transversales: 0,75·p del estado X + 0,75·p del estado Y en muros (superpuestos),
+   * techo = 100 % del mayor valor del caso 1 entre ambos estados (modo 'S' máxima succión, 'P' máxima presión).
+   */
+  function cargasCaso3(r, cx, cy, modo, geo) {
+    const grupos = [];
+    for (const mc of r.marcos) {
+      const lx = r.cargaMarco(cx, mc), ly = r.cargaMarco(cy, mc);
+      const l = { colXm: 0.75 * (lx.colXm + ly.colXm), colXp: 0.75 * (lx.colXp + ly.colXp), vigas: envTecho([lx.vigas, ly.vigas], modo, 1) };
+      const key = [l.colXm, l.colXp, ...l.vigas.map((v) => v.faldon + v.a.toFixed(2) + v.b.toFixed(2) + ':' + v.w.toFixed(1))].map((x) => typeof x === 'number' ? x.toFixed(1) : x).join('|');
+      const g = grupos.find((q) => q.key === key);
+      if (g) g.marcos.push(mc); else grupos.push({ key, marcos: [mc], l });
+    }
+    const barl = cx.sentido > 0 ? 'X−' : 'X+', sot = cx.sentido > 0 ? 'X+' : 'X−';
+    const vig = (l, fal) => l.vigas.filter((v) => v.faldon === fal || (fal === 'X−' && v.faldon === 'U'));
+    const filas = [
+      { el: 'Muro barlovento WX + lateral WY', ref: 'columna ' + barl, f: (g) => [{ w: barl === 'X−' ? g.l.colXm : g.l.colXp }] },
+      { el: 'Muro sotavento WX + lateral WY', ref: 'columna ' + sot, f: (g) => [{ w: sot === 'X−' ? g.l.colXm : g.l.colXp }] },
+    ];
+    if (geo.tipoTecho === 'una') filas.push({ el: 'Techo', ref: 'viga', f: (g) => vig(g.l, 'X−') });
+    else { filas.push({ el: 'Techo faldón ' + barl, ref: 'viga faldón ' + barl, f: (g) => vig(g.l, barl) }); filas.push({ el: 'Techo faldón ' + sot, ref: 'viga faldón ' + sot, f: (g) => vig(g.l, sot) }); }
+    return { grupos, filas };
+  }
+
+  /**
+   * Casos 2 y 4 de la Fig. 11 por nivel (diafragma): fuerza de piso F = k·(|pW| + |pL|)·B·htrib y Mz = F·e, e = 0,15B.
+   * k = 0,75 (caso 2) o 0,563 (caso 4, ambas direcciones simultáneas). alturas: alturas de entrepiso desde el suelo.
+   */
+  function torsionNiveles(cx, cy, geo, alturas, k) {
+    const niv = [];
+    let z = 0;
+    const n = alturas.length;
+    for (let i = 0; i < n; i++) {
+      z += alturas[i];
+      const htrib = alturas[i] / 2 + (i + 1 < n ? alturas[i + 1] / 2 : 0);
+      const fila = { nivel: i + 1, z, htrib };
+      for (const [dir, c, B] of [['X', cx, geo.largo], ['Y', cy, geo.ancho]]) {
+        if (!c) continue;
+        const w = c.muros.find((m) => m.rol === 'barlovento'), l = c.muros.find((m) => m.rol === 'sotavento');
+        const F = k * (Math.abs(w.pext) + Math.abs(l.pext)) * B * htrib;
+        fila[dir] = { B, e: 0.15 * B, pW: w.pext, pL: l.pext, F, Mz: F * 0.15 * B };
+      }
+      niv.push(fila);
+    }
+    return niv;
   }
 
   /** Combinaciones que gobiernan algún elemento del marco en cada caso de diseño (sin repetir), con filtro opcional. */
@@ -1241,7 +1289,7 @@
     G_ACC, ZONAS, IMPORTANCIA, KD, EXPOSICION, TERRENO, TABLA5, TABLA4, CERRAMIENTO, TOPO,
     lerp, round, Nm2_to_kgf, Kz, Ke, Kzt, qz, clasificarCerramiento, Ri,
     CpSotavento, CpTechoBarlovento, CpTechoSotavento, CpTechoZona, zonasTecho, CpZonaPromedio,
-    GCpfA, ENV_A, ENV_B, direccional, galponSAP, anexoA, CA1, CA2, procesarCasos, parseEjes, letraEje, casosMarco, analisisGalpon, combosGobernantes, cargasSAP, cyrMuro, GCpMuro, trazaCpTecho, redArea, simplificado, contenedor, techumbre,
+    GCpfA, ENV_A, ENV_B, direccional, galponSAP, anexoA, CA1, CA2, procesarCasos, parseEjes, letraEje, casosMarco, analisisGalpon, combosGobernantes, cargasSAP, cargasCaso3, torsionNiveles, envTecho, cyrMuro, GCpMuro, trazaCpTecho, redArea, simplificado, contenedor, techumbre,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NCh432 = api;
