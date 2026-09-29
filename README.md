@@ -8,8 +8,8 @@ Abrir `index.html` en el navegador (no requiere instalación). El motor de cálc
 
 | Pestaña | Uso | Formulación |
 |---|---|---|
-| Galpón | Método direccional (SPRFV), viento normal y paralelo a la cumbrera, ±GCpi, perfil en altura del muro de barlovento y carga lineal en marcos | p = q·Kd·G·Cp − qh·Kd·(GCpi) |
-| Edificio bajo | Método simplificado (envolvente) para viviendas y sedes sociales, casos A y B, zonas 1–6 y de borde E | p = qh·Kd·[(GCpf) − (GCpi)] |
+| Galpón | Método direccional (SPRFV). Patrones ±WX ±WY × variantes de Cp de techo × ±GCpi (hasta 16) para SAP 2000, envolvente por superficie, resultantes Fx/Fy/Fz con casos que gobiernan, cargas por marco y traza de la interpolación de Cp | p = qh·Kd·G·Cp − qh·Kd·(GCpi) |
+| Edificio bajo | Provisorio: procedimiento de envolvente ASCE 7-22 cap. 28. **No es el Anexo A de la NCh 432:2025** (pendiente) | p = qh·Kd·[(GCpf) − (GCpi)] |
 | Contenedor | Contenedor oficina/bodega: fuerza horizontal, succión de techo, volcamiento, deslizamiento y anclajes | γD·D + γW·W |
 | Techumbre | Entrega q [kPa], Cpi, Cp barlovento y Cp sotavento para el artefacto de cerchas (p = q·(Cp − Cpi)) | q = qh·Kd, Cp = G·Cp |
 
@@ -19,7 +19,8 @@ Parámetros generales (columna izquierda): zona y V (Tabla 1), I (Tabla 2), Kd (
 
 - q(z) = 0,613 · I · Kz · Kzt · Ke · V² [N/m²].
 - Tabla 6 (α, zg, zmín) no estaba en la planilla. Se usan α = 7,5 / 9,8 / 11,5; zg = 1000 / 750 / 590 m; zmín = 10 / 5 / 2 m (B / C / D), que reproducen la Tabla 5 al redondear. **Verificar contra la norma.**
-- Los coeficientes GCpf del método simplificado corresponden al procedimiento de envolvente para edificios bajos (base ASCE 7). **Verificar contra la norma.**
+- La pestaña Edificio bajo usa el procedimiento de envolvente de ASCE 7-22 y no el Anexo A de la NCh. Falta incorporar el Anexo A.
+- Para θ ≤ 10° se usa h = altura de alero. Los valores 0,0ᵃ de la tabla de techos solo se usan para interpolar.
 
 ## Pruebas
 

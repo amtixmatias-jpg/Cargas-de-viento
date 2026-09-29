@@ -155,7 +155,7 @@ svg.dia text { font-family: var(--font-mono); font-size: 11px; }
   </div>
   <nav class="tabs" role="tablist" aria-label="Módulos">
     <button role="tab" id="tab-galpon" aria-selected="true" data-tab="galpon">Galpón <small>método direccional</small></button>
-    <button role="tab" id="tab-simple" aria-selected="false" data-tab="simple">Edificio bajo <small>método simplificado</small></button>
+    <button role="tab" id="tab-simple" aria-selected="false" data-tab="simple">Edificio bajo <small>envolvente · provisorio</small></button>
     <button role="tab" id="tab-cont" aria-selected="false" data-tab="cont">Contenedor <small>volcamiento y anclaje</small></button>
     <button role="tab" id="tab-techo" aria-selected="false" data-tab="techo">Techumbre <small>datos para cerchas</small></button>
   </nav>
@@ -274,30 +274,50 @@ svg.dia text { font-family: var(--font-mono); font-size: 11px; }
 <!-- ---------- GALPÓN ---------- -->
 <section id="p-galpon" role="tabpanel" aria-labelledby="tab-galpon" class="mod" style="display:grid;gap:18px">
   <div class="intro"><h2>Galpón · método direccional</h2>
-    <p>Sistema principal resistente (SPRFV). p = q·Kd·G·Cp − qh·Kd·(GCpi), igual que tu planilla. Se evalúan las dos direcciones de viento y ambos signos de GCpi.</p></div>
+    <p>Sistema principal resistente (SPRFV): p = qh·Kd·G·Cp − qh·Kd·(GCpi). Se generan los patrones ±WX y ±WY, cada uno combinado con las variantes de Cp de techo y con ±GCpi, listos para cargar en SAP 2000.</p></div>
   <div class="card">
     <h3>Geometría</h3>
     <div class="row4">
-      <label class="f"><span>Largo (∥ cumbrera) [m]</span><input type="number" id="gLargo" step="0.1" min="0"></label>
-      <label class="f"><span>Ancho / luz [m]</span><input type="number" id="gAncho" step="0.1" min="0"></label>
+      <label class="f"><span>Largo (∥ cumbrera, eje Y) [m]</span><input type="number" id="gLargo" step="0.1" min="0"></label>
+      <label class="f"><span>Ancho / luz (eje X) [m]</span><input type="number" id="gAncho" step="0.1" min="0"></label>
       <label class="f"><span>Altura alero [m]</span><input type="number" id="gAlero" step="0.1" min="0"></label>
-      <label class="f"><span>Techo</span><select id="gTecho"><option value="dos">Dos aguas</option><option value="una">Una agua</option><option value="plana">Plano</option></select></label>
+      <label class="f"><span>Techo</span><select id="gTecho"><option value="dos">Dos aguas</option><option value="una">Una agua (sube hacia X+)</option><option value="plana">Plano</option></select></label>
       <label class="f"><span>Inclinación θ [°]</span><input type="number" id="gTheta" step="0.5" min="0" max="89"></label>
-      <label class="f"><span>Ancho tributario marcos [m]</span><input type="number" id="gTrib" step="0.1" min="0"></label>
+      <label class="f"><span>Separación de marcos [m]</span><input type="number" id="gSep" step="0.1" min="0"></label>
+      <label class="chk" style="grid-column:span 2"><input type="checkbox" id="gRed"> Reducir −1,3 por área tributaria (nota b)</label>
     </div>
   </div>
   <div class="stats" id="gStats"></div>
-  <div id="gDirs" style="display:grid;gap:18px"></div>
+  <div class="split">
+    <div class="card"><h3>Ejes y superficies</h3><div id="gEjes"></div></div>
+    <div class="card"><h3>Obtención de los coeficientes Cp</h3><div id="gTraza"></div></div>
+  </div>
+  <div class="card"><h3>Casos más desfavorables <span class="cl">envolvente por superficie y resultantes</span><button class="btn act" type="button" data-copy="gEnv">Copiar tabla</button></h3>
+    <div class="split"><div class="tbl"><table id="gEnv"></table></div><div class="tbl"><table id="gRes"></table></div></div>
+  </div>
+  <div id="gCasos" style="display:grid;gap:18px"></div>
+  <div class="card"><h3>Cargas en marcos <span class="cl">modelo 2D, plano XZ</span>
+      <label class="f act" style="min-width:170px"><select id="gMarco" aria-label="Marco"></select></label>
+      <button class="btn" type="button" data-copy="gMar">Copiar tabla</button></h3>
+    <div class="tbl"><table id="gMar"></table></div>
+    <p class="note" id="gMarNota"></p></div>
+  <div class="split">
+    <div class="card"><h3>Elevación de un caso</h3>
+      <label class="f" style="max-width:320px"><span>Caso</span><select id="gCaso"></select></label><div id="gDia" style="margin-top:8px"></div></div>
+    <div class="card"><h3>Combinaciones en SAP 2000</h3><div id="gComb" class="note"></div></div>
+  </div>
   <div class="card">
     <h3><span class="cl">5.8</span> Muro de barlovento · presión en altura (Cp = 0,8, con qz)</h3>
     <div class="tbl"><table id="gPerfil"></table></div>
+    <p class="note">Los patrones SAP usan qh en toda la altura del muro de barlovento (conservador). Si modela la variación con la altura, use esta tabla.</p>
   </div>
 </section>
 
 <!-- ---------- SIMPLIFICADO ---------- -->
 <section id="p-simple" role="tabpanel" aria-labelledby="tab-simple" hidden style="display:grid;gap:18px">
-  <div class="intro"><h2>Edificio bajo · método simplificado</h2>
-    <p>Procedimiento de envolvente para edificios de baja altura (viviendas, sedes sociales): p = qh·Kd·[(GCpf) − (GCpi)], con zonas 1 a 6 y zonas de borde E de ancho 2a.</p></div>
+  <div class="intro"><h2>Edificio bajo · procedimiento de envolvente</h2>
+    <p>Procedimiento de envolvente de ASCE 7-22 cap. 28 (base de la NCh 432:2025) para edificios de baja altura: p = qh·Kd·[(GCpf) − (GCpi)], zonas 1 a 6 y de borde E de ancho 2a.</p></div>
+  <div class="card" style="border-color:var(--bad)"><p class="note" style="margin:0"><b class="warn">Este no es el método simplificado del Anexo A de la NCh 432:2025.</b> El Anexo A tiene su propia formulación, que no está en la planilla ni en el material disponible para esta herramienta. Use esta pestaña solo como referencia hasta incorporar el Anexo A.</p></div>
   <div class="card">
     <h3>Geometría</h3>
     <div class="row4">
@@ -324,6 +344,7 @@ svg.dia text { font-family: var(--font-mono); font-size: 11px; }
 <section id="p-cont" role="tabpanel" aria-labelledby="tab-cont" hidden style="display:grid;gap:18px">
   <div class="intro"><h2>Contenedor · análisis puntual</h2>
     <p>Módulo tipo oficina o bodega sobre apoyos. Fuerza horizontal neta (la presión interna se anula), succión de techo con +GCpi, volcamiento, deslizamiento y tracción de anclajes.</p></div>
+  <p class="note" style="margin:0">Base: el contenedor se trata como un edificio cerrado pequeño con el método direccional (Cp de muros y de techo plano por zonas). ASCE 7-22, base de la NCh, no tiene disposiciones propias para contenedores; confirme que la NCh 432:2025 tampoco las tenga. Las verificaciones de volcamiento, deslizamiento y anclaje son de estabilidad, no de la norma de viento.</p>
   <div class="card">
     <h3>Contenedor</h3>
     <div class="row4">
@@ -350,6 +371,7 @@ svg.dia text { font-family: var(--font-mono); font-size: 11px; }
 <section id="p-techo" role="tabpanel" aria-labelledby="tab-techo" hidden style="display:grid;gap:18px">
   <div class="intro"><h2>Techumbre · datos para cerchas</h2>
     <p>Entrega q, Cpi, Cp barlovento y Cp sotavento listos para tu artefacto de cerchas, que calcula p = q·(Cp − Cpi). Por eso q incluye Kd y los Cp entregados incluyen G.</p></div>
+  <p class="note" style="margin:0">Base: una cercha recibe viento de ambos faldones, por lo que se diseña como parte del SPRFV con los Cp de techo del método direccional (los mismos de la pestaña Galpón). Costaneras, planchas y fijaciones son componentes y revestimientos, con coeficientes GCp propios por área efectiva que esta herramienta aún no incluye.</p>
   <div class="card">
     <h3>Techumbre</h3>
     <div class="row4">
@@ -388,7 +410,7 @@ const DEFAULTS = {
   topo: false, topoForma: 'escarpe2d', topoH: 20, topoLh: 60, topoX: 0, topoZ: 5, topoSentido: 'favor',
   ze: 0, keMetodo: 'formula', G: 0.85,
   cerr: 'cerrado', Ao: 0, Ag: 200, Aoi: 0, Agi: 800, ab80: false, Aog: 0, Vi: 0,
-  gLargo: 51.8, gAncho: 13.9, gAlero: 6.4, gTecho: 'dos', gTheta: 10, gTrib: 6,
+  gLargo: 51.8, gAncho: 13.9, gAlero: 6.4, gTecho: 'dos', gTheta: 10, gSep: 6, gRed: false, gMarco: 2, gCaso: 'WXP_1',
   sLargo: 14, sAncho: 8, sAlero: 2.6, sTecho: 'dos', sTheta: 20, sTrib: 1, sKd: true,
   cTipo: '20', cLargo: 6.06, cAncho: 2.44, cAlto: 2.59, cNiv: 1, cApoyo: 0.3, cPeso: 2400, cMu: 0.4, cFS: 1.5, cGD: 0.9, cGW: 1.6, cAnc: 2,
   tLuz: 10, tLargo: 30, tAlero: 3.5, tTecho: 'dos', tTheta: 15, tDir: 'normal', tX: 0,
@@ -570,35 +592,129 @@ function elevacion(o) {
 }
 
 /* ---------------- GALPÓN ---------------- */
+const FU = () => unit === 'kgf' ? { u: 'kgf', f: (x) => x / N.G_ACC, d: 0 } : { u: 'kN', f: (x) => x / 1000, d: 2 };
+const fm = (v) => nf(v, 2);
+function tramoTxt(t) {
+  if (t.eje === 'y') return `Techo y = ${fm(t.a)}–${fm(t.b)} m`;
+  const f = t.faldon === 'U' ? 'Techo' : 'Faldón ' + t.faldon;
+  return `${f} x = ${fm(t.a)}–${fm(t.b)} m`;
+}
+function ejesSVG(r) {
+  const W = 520, H = 250, Lg = +S.gLargo, An = +S.gAncho;
+  const s = Math.min(300 / Math.max(Lg, 0.1), 150 / Math.max(An, 0.1));
+  const w = An * s, h = Lg * s, x0 = (W - w) / 2, y0 = (H - h) / 2;
+  const ar = (x1, y1, x2, y2, t, tx, ty) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--accent)" stroke-width="2" marker-end="url(#ah)"/><text x="${tx}" y="${ty}" text-anchor="middle" fill="var(--accent)">${t}</text>`;
+  return `<svg class="dia" style="max-width:520px" viewBox="0 0 ${W} ${H}" role="img" aria-label="Planta con ejes X e Y">
+    <defs><marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="var(--accent)"/></marker></defs>
+    <rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="var(--panel2)" stroke="var(--fg)" stroke-width="1.4"/>
+    ${S.gTecho === 'dos' ? `<line x1="${x0 + w / 2}" y1="${y0}" x2="${x0 + w / 2}" y2="${y0 + h}" stroke="var(--muted)" stroke-dasharray="5 4"/>` : ''}
+    <text x="${x0 - 6}" y="${y0 + h / 2}" text-anchor="end" fill="var(--fg)">Muro X−</text>
+    <text x="${x0 + w + 6}" y="${y0 + h / 2}" fill="var(--fg)">Muro X+</text>
+    <text x="${x0 + w / 2}" y="${y0 + h + 14}" text-anchor="middle" fill="var(--fg)">Frontón Y−</text>
+    <text x="${x0 + w / 2}" y="${y0 - 6}" text-anchor="middle" fill="var(--fg)">Frontón Y+</text>
+    ${ar(x0 - 70, y0 + h / 2 + 22, x0 - 12, y0 + h / 2 + 22, '+WX', x0 - 42, y0 + h / 2 + 40)}
+    ${ar(x0 + w + 70, y0 + h / 2 + 22, x0 + w + 12, y0 + h / 2 + 22, '−WX', x0 + w + 42, y0 + h / 2 + 40)}
+    ${ar(x0 + w + 40, y0 + h + 40, x0 + w + 40, y0 + h + 4, '+WY', x0 + w + 64, y0 + h + 28)}
+    ${ar(x0 + w + 40, y0 - 40, x0 + w + 40, y0 - 4, '−WY', x0 + w + 64, y0 - 22)}
+    <text x="${x0 + 4}" y="${y0 + h - 6}" fill="var(--muted)">(0,0)</text>
+  </svg><p class="note">Planta. X a lo largo de la luz, Y a lo largo de la cumbrera, origen en la esquina X−/Y−. Signo +: la presión empuja hacia la superficie; −: succión. Coordenadas x, y de los tramos de techo medidas en planta desde el origen.</p>`;
+}
+function trazaHTML(r, g) {
+  const t = r.traza, parts = [];
+  parts.push(`<p class="note" style="margin-top:0">h = ${fm(r.h)} m (${r.theta <= 10 ? 'θ ≤ 10°: altura de alero' : 'altura media del techo'}) · WX: h/L = ${nf(r.hLx, 3)}, L/B = ${nf(+S.gAncho / +S.gLargo, 3)} · WY: h/L = ${nf(r.hLy, 3)}, L/B = ${nf(+S.gLargo / +S.gAncho, 3)}</p>`);
+  parts.push(`<table><thead><tr><th>Superficie</th><th>Regla</th><th class="n">Cp</th></tr></thead><tbody>
+    <tr><td>Muro barlovento</td><td>todos los valores</td><td class="n">0,800</td></tr>
+    <tr><td>Muro sotavento WX</td><td>L/B = ${nf(+S.gAncho / +S.gLargo, 2)} → interp. (0–1: −0,5; 2: −0,3; ≥4: −0,2)</td><td class="n">${nf(r.CpLeeX, 3)}</td></tr>
+    <tr><td>Muro sotavento WY</td><td>L/B = ${nf(+S.gLargo / +S.gAncho, 2)}</td><td class="n">${nf(r.CpLeeY, 3)}</td></tr>
+    <tr><td>Muros laterales</td><td>todos los valores</td><td class="n">−0,700</td></tr></tbody></table>`);
+  if (t) {
+    const hdr = `<tr><th>h/L \\ θ</th>${t.ths.map((x) => `<th class="n">${nf(x, 1)}°</th>`).join('')}</tr>`;
+    const body = (m) => t.hLs.map((k, i) => `<tr><td class="mono">${k === 0.25 ? '≤ 0,25' : k === 1 ? '≥ 1,0' : '0,5'}</td>${m[i].map((v) => `<td class="n">${v === null ? '—' : nf(v, 2)}</td>`).join('')}</tr>`).join('');
+    parts.push(`<p class="note"><b>Techo WX (θ = ${nf(r.theta, 1)}° ≥ 10°, normal a la cumbrera).</b> Interpolación lineal primero en θ y luego en h/L, entre valores de la tabla del mismo signo. Los valores 0,0ᵃ solo sirven para interpolar.</p>
+      <div class="tbl"><table><thead>${hdr}</thead><tbody><tr class="grp"><td colspan="${t.ths.length + 1}">Barlovento, valor negativo → ${r.ww.neg === null ? 'no aplica' : nf(r.ww.neg, 3)}</td></tr>${body(t.neg)}
+      <tr class="grp"><td colspan="${t.ths.length + 1}">Barlovento, valor positivo → ${nf(r.ww.pos, 3)}</td></tr>${body(t.pos)}</tbody></table></div>
+      <div class="tbl"><table><thead><tr><th>h/L \\ θ</th>${t.lths.map((x) => `<th class="n">${x === 20 ? '≥ 20' : x}°</th>`).join('')}</tr></thead><tbody>
+      <tr class="grp"><td colspan="${t.lths.length + 1}">Sotavento → ${nf(r.lw, 3)}</td></tr>${t.hLs.map((k, i) => `<tr><td class="mono">${k === 0.25 ? '≤ 0,25' : k === 1 ? '≥ 1,0' : '0,5'}</td>${t.lee[i].map((v) => `<td class="n">${nf(v, 2)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+  } else {
+    parts.push(`<p class="note"><b>Techo WX (θ = ${nf(r.theta, 1)}° &lt; 10°):</b> tabla por distancia desde el borde de barlovento con h/L = ${nf(r.hLx, 3)}: ${r.zonasX.map((z) => `${fm(z.x0)}–${fm(z.x1)} m: ${nf(z.Cp, 3)}`).join(' · ')}. Caso alternativo −0,18.</p>`);
+  }
+  parts.push(`<p class="note"><b>Techo WY (paralelo a la cumbrera, todo θ):</b> h/L = ${nf(r.hLy, 3)}: ${r.zonasY.map((z) => `${fm(z.x0)}–${fm(z.x1)} m: ${nf(z.Cp, 3)}`).join(' · ')}. Caso alternativo −0,18.${S.gRed ? ` Nota b: factor ${nf(r.fbX, 2)} (WX), ${nf(r.fbY, 2)} (WY) sobre −1,3.` : ''} Para 0,5 &lt; h/L &lt; 1,0 se interpola entre ambas filas en cada posición.</p>`);
+  return parts.join('');
+}
 function renderGalpon(g) {
-  const r = N.direccional(g, { largo: +S.gLargo, ancho: +S.gAncho, hAlero: +S.gAlero, tipoTecho: S.gTecho, theta: +S.gTheta });
-  const u = U();
+  const geo = { largo: +S.gLargo, ancho: +S.gAncho, hAlero: +S.gAlero, tipoTecho: S.gTecho, theta: +S.gTheta, sepMarcos: +S.gSep, redArea: !!S.gRed };
+  const r = N.galponSAP(g, geo);
+  const d = N.direccional(g, geo);
+  const u = U(), F = FU();
   $('gTheta').disabled = S.gTecho === 'plana';
-  $('gStats').innerHTML = stat('θ', nf(r.theta, 1), '°') + stat('h media', nf(r.h, 2), 'm') + stat('h cumbrera', nf(r.hCum, 2), 'm')
-    + stat('Kh', nf(r.Kh, 3)) + stat('qh', nf(u.f(r.qh), u.d), u.u) + stat('qh·Kd', nf(u.f(r.qh * g.Kd), u.d), u.u);
-  const trib = +S.gTrib;
-  $('gDirs').innerHTML = r.dirs.map((d, i) => {
-    const rows = d.filas.map((f) => `<tr><td>${f.sup}${f.sub ? `<span class="sub">${f.sub}</span>` : ''}</td>
-      <td class="n">${nf(f.Cp, 3)}</td><td class="n">${P(f.pos)}</td><td class="n">${P(f.neg)}</td>
-      ${trib > 0 ? `<td class="n">${nf(u.f(f.pos) * trib, u.dl)}</td><td class="n">${nf(u.f(f.neg) * trib, u.dl)}</td>` : ''}</tr>`).join('');
-    const tbl = `<table id="gT${i}"><thead><tr><th>Superficie</th><th class="n">Cp</th><th class="n">p +GCpi</th><th class="n">p −GCpi</th>
-      ${trib > 0 ? `<th class="n">w +GCpi</th><th class="n">w −GCpi</th>` : ''}</tr></thead><tbody>${rows}</tbody></table>`;
-    let dia = '';
-    if (d.id === 'normal') {
-      const f = d.filas;
-      const roofW = f.filter((x) => x.sup.startsWith('Techo'));
-      const vals = { ww: f[0].pos, lw: f[1].pos, rw: roofW[0].pos, rl: (S.gTecho === 'dos' && r.theta >= 10) ? roofW[roofW.length - 1].pos : (roofW.length > 2 ? roofW[roofW.length - 2].pos : roofW[0].pos) };
-      dia = `<div>${elevacion({ ancho: +S.gAncho, hAlero: +S.gAlero, rise: r.rise, tipo: S.gTecho, vals, titulo: 'Elevación · caso +GCpi, primer Cp de cada superficie' })}
-        <div class="legend"><span><i style="background:var(--pres)"></i>presión (+)</span><span><i style="background:var(--succ)"></i>succión (−)</span></div></div>`;
-    }
-    return `<div class="card"><h3>${d.nombre} <span class="cl">B = ${nf(d.B, 2)} m · L = ${nf(d.L, 2)} m · L/B = ${nf(d.LB, 2)} · h/L = ${nf(d.hL, 3)}</span>
-      <button class="btn act" type="button" data-copy="gT${i}">Copiar tabla</button></h3>
-      <div class="${dia ? 'split' : ''}"><div class="tbl">${tbl}
-      <p class="note">p en ${u.u}${trib > 0 ? ` · w = p × ${nf(trib, 2)} m en ${u.ul}` : ''}. +GCpi: presión interna hacia las superficies interiores; −GCpi: succión interna.</p></div>${dia}</div></div>`;
+  $('gStats').innerHTML = stat('θ', nf(r.theta, 1), '°') + stat('h', fm(r.h), 'm') + stat('h cumbrera', fm(+S.gAlero + r.rise), 'm')
+    + stat('Kh', nf(r.Kh, 3)) + stat('qh', nf(u.f(r.qh), u.d), u.u) + stat('qh·Kd', nf(u.f(r.qh * g.Kd), u.d), u.u) + stat('Patrones', r.casos.length);
+  $('gEjes').innerHTML = ejesSVG(r);
+  $('gTraza').innerHTML = trazaHTML(r, g);
+
+  // Envolvente
+  $('gEnv').innerHTML = `<thead><tr><th>Superficie</th><th class="n">Máx. presión</th><th>Caso</th><th class="n">Máx. succión</th><th>Caso</th></tr></thead><tbody>` +
+    r.env.map((e) => `<tr><td>${e.sup}</td><td class="n">${e.max > 0 ? P(e.max) : '—'}</td><td class="mono">${e.max > 0 ? e.cmax : ''}</td><td class="n">${e.min < 0 ? P(e.min) : '—'}</td><td class="mono">${e.min < 0 ? e.cmin : ''}</td></tr>`).join('') +
+    `</tbody>`;
+  const gv = r.gobiernan, tags = {};
+  const tag = (c, t) => { (tags[c.sap] = tags[c.sap] || []).push(t); };
+  tag(gv.FxMax, 'máx +Fx'); tag(gv.FxMin, 'máx −Fx'); tag(gv.FyMax, 'máx +Fy'); tag(gv.FyMin, 'máx −Fy'); tag(gv.FzMax, 'máx levantamiento');
+  if (gv.FzMin.Fz < 0) tag(gv.FzMin, 'máx carga hacia abajo'); else tag(gv.FzMin, 'mín levantamiento');
+  $('gRes').innerHTML = `<thead><tr><th>Caso SAP</th><th class="n">Fx [${F.u}]</th><th class="n">Fy [${F.u}]</th><th class="n">Fz ↑ [${F.u}]</th><th></th></tr></thead><tbody>` +
+    r.casos.map((c) => `<tr><td class="mono" title="${c.desc}">${c.sap}</td><td class="n">${nf(F.f(c.Fx), F.d)}</td><td class="n">${nf(F.f(c.Fy), F.d)}</td><td class="n">${nf(F.f(c.Fz), F.d)}</td>
+      <td>${(tags[c.sap] || []).map((t) => `<span class="pill ok">${t}</span>`).join(' ')}</td></tr>`).join('') + '</tbody>';
+
+  // Tablas por dirección
+  const grupos = [['X', 1, '+WX', 'viento en sentido +X, golpea el muro X−'], ['X', -1, '−WX', 'viento en sentido −X, golpea el muro X+'],
+    ['Y', 1, '+WY', 'viento en sentido +Y, golpea el frontón Y−'], ['Y', -1, '−WY', 'viento en sentido −Y, golpea el frontón Y+']];
+  $('gCasos').innerHTML = grupos.map(([dir, sen, tit, sub], gi) => {
+    const cs = r.casos.filter((c) => c.dir === dir && c.sentido === sen);
+    // filas: muros + tramos de techo más finos
+    const base = cs.reduce((b, c) => (c.techo.length > b.techo.length ? c : b), cs[0]);
+    const val = (c, t) => { const m = (t.a + t.b) / 2; const e = c.techo.find((x) => x.eje === t.eje && (x.faldon === t.faldon || x.faldon === 'todo' || t.faldon === 'todo') && m >= x.a - 1e-9 && m <= x.b + 1e-9); return e ? e : null; };
+    let rows = base.muros.map((m, i) => `<tr><td>${m.sup} <span class="sub">${m.rol}</span></td>${cs.map((c) => `<td class="n">${nf(c.muros[i].Cp, 3)}</td><td class="n">${P(c.muros[i].p)}</td>`).join('')}</tr>`).join('');
+    rows += base.techo.map((t) => `<tr><td>${tramoTxt(t)}</td>${cs.map((c) => { const e = val(c, t); return e ? `<td class="n">${nf(e.Cp, 3)}</td><td class="n">${P(e.p)}</td>` : '<td></td><td></td>'; }).join('')}</tr>`).join('');
+    return `<div class="card"><h3>${tit} <span class="cl">${sub}</span><button class="btn act" type="button" data-copy="gC${gi}">Copiar tabla</button></h3>
+      <div class="tbl"><table id="gC${gi}"><thead><tr><th rowspan="2">Superficie</th>${cs.map((c) => `<th colspan="2" class="n" title="${c.desc}">${c.sap}</th>`).join('')}</tr>
+      <tr>${cs.map((c) => `<th class="n" style="text-transform:none">Cp</th><th class="n" style="text-transform:none">p ${c.gcpi >= 0 ? '+' : '−'}GCpi</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="note">${cs.map((c) => `<b class="mono">${c.sap}</b>: techo ${c.variante.nombre}, GCpi ${c.gcpi >= 0 ? '+' : '−'}${nf(Math.abs(c.gcpi), 2)}`).join(' · ')}. p en ${u.u}.</p></div>`;
   }).join('');
-  $('gPerfil').innerHTML = `<thead><tr><th class="n">z [m]</th><th class="n">Kz</th><th class="n">qz [${u.u}]</th><th class="n">p +GCpi</th><th class="n">p −GCpi</th>${trib > 0 ? '<th class="n">w +GCpi</th><th class="n">w −GCpi</th>' : ''}</tr></thead><tbody>` +
-    r.perfil.map((f) => `<tr><td class="n">${nf(f.z, 2)}</td><td class="n">${nf(f.Kz, 3)}</td><td class="n">${nf(u.f(f.q), u.d)}</td><td class="n">${P(f.pos)}</td><td class="n">${P(f.neg)}</td>
-      ${trib > 0 ? `<td class="n">${nf(u.f(f.pos) * trib, u.dl)}</td><td class="n">${nf(u.f(f.neg) * trib, u.dl)}</td>` : ''}</tr>`).join('') + '</tbody>';
+
+  // Marcos
+  const selM = $('gMarco');
+  const opts = r.marcos.map((m) => `<option value="${m.i}">Marco ${m.i} · y = ${fm(m.y)} m · trib. ${fm(m.trib)} m</option>`).join('');
+  if (selM.dataset.k !== opts) { selM.innerHTML = opts; selM.dataset.k = opts; }
+  let mi = Math.min(Math.max(1, +S.gMarco || 1), r.marcos.length); selM.value = mi;
+  const mc = r.marcos[mi - 1];
+  if (mc) {
+    const rows = r.casos.map((c) => {
+      const L = r.cargaMarco(c, mc);
+      const vig = (f) => L.vigas.filter((v) => v.faldon === f || (f === 'X−' && v.faldon === 'U'))
+        .map((v) => `${nf(u.f(v.w), u.dl)}${L.vigas.length > 2 || (S.gTecho !== 'una' && L.vigas.filter((x) => x.faldon === f).length > 1) ? ` <span class="sub">(${fm(v.a)}–${fm(v.b)})</span>` : ''}`).join('<br>');
+      return `<tr><td class="mono" title="${c.desc}">${c.sap}</td><td class="n">${P(L.colXm)}</td><td class="n">${vig('X−')}</td>${S.gTecho === 'una' ? '' : `<td class="n">${vig('X+')}</td>`}<td class="n">${P(L.colXp)}</td></tr>`;
+    }).join('');
+    $('gMar').innerHTML = `<thead><tr><th>Caso SAP</th><th class="n">Columna X− [${u.ul}]</th><th class="n">${S.gTecho === 'una' ? 'Viga techo' : 'Viga X−'} [${u.ul}]</th>${S.gTecho === 'una' ? '' : `<th class="n">Viga X+ [${u.ul}]</th>`}<th class="n">Columna X+ [${u.ul}]</th></tr></thead><tbody>${rows}</tbody>`;
+    $('gMarNota').innerHTML = `w = p × ancho tributario (${fm(mc.trib)} m). Tramos de viga entre paréntesis en x [m]. En WY la presión de techo se promedia sobre la franja tributaria del marco (y = ${fm(mc.a)}–${fm(mc.b)} m). En SAP asigne como carga distribuida perpendicular al elemento: + hacia el interior del galpón en columnas y hacia abajo en vigas; − en sentido contrario. En columnas: + en X− equivale a +X global; + en X+ equivale a −X global.`;
+  } else { $('gMar').innerHTML = ''; $('gMarNota').textContent = 'Ingrese la separación de marcos.'; }
+
+  // Elevación de un caso WX
+  const selC = $('gCaso');
+  const copts = r.casos.filter((c) => c.dir === 'X').map((c) => `<option value="${c.sap}">${c.sap} · ${c.desc}</option>`).join('');
+  if (selC.dataset.k !== copts) { selC.innerHTML = copts; selC.dataset.k = copts; }
+  const cs = r.casos.find((c) => c.sap === S.gCaso && c.dir === 'X') || r.casos[0];
+  selC.value = cs.sap;
+  const avg = (f) => { const ts = cs.techo.filter((t) => t.faldon === f || (f === 'X−' && t.faldon === 'U')); const L = ts.reduce((a, t) => a + (t.b - t.a), 0); return ts.reduce((a, t) => a + t.p * (t.b - t.a), 0) / (L || 1); };
+  $('gDia').innerHTML = elevacion({ ancho: +S.gAncho, hAlero: +S.gAlero, rise: r.rise, tipo: S.gTecho,
+    vals: { ww: cs.muros[0].p, lw: cs.muros[1].p, rw: avg('X−'), rl: avg('X+') }, titulo: cs.sap + ' · muros X− / X+ y techo (promedio por faldón)' }) +
+    `<div class="legend"><span><i style="background:var(--pres)"></i>presión (+)</span><span><i style="background:var(--succ)"></i>succión (−)</span></div>`;
+
+  const nx = r.casos.filter((c) => c.dir === 'X' && c.sentido > 0).map((c) => c.sap), ny = r.casos.filter((c) => c.dir === 'Y' && c.sentido > 0).map((c) => c.sap);
+  $('gComb').innerHTML = `<p style="margin-top:0">Defina en SAP un <i>load pattern</i> tipo WIND (o OTHER) por cada caso de las tablas: ${r.casos.length} en total (${nx.join(', ')} y sus equivalentes N, más ${ny.join(', ')} y sus equivalentes N).</p>
+    <p>Cada patrón entra a las combinaciones de diseño en forma independiente, por ejemplo 1,2D + 1,6W + L y 0,9D + 1,6W con W = cada patrón. En SAP puede agruparlos en una combinación <i>Envelope</i> por dirección.</p>
+    <p>La NCh 432:2025 se basa en ASCE 7-22, que además exige los casos de carga de la Fig. 27.3-8: caso 2 (75 % de un patrón con excentricidad ±15 %), caso 3 (75 % de WX + 75 % de WY simultáneos) y caso 4 (56,3 % de ambos con excentricidad). El caso 3 se arma como combinación 0,75·WX + 0,75·WY. <b>Verifique en la norma el número de figura y si la exención para edificios bajos aplica.</b></p>`;
+
+  $('gPerfil').innerHTML = `<thead><tr><th class="n">z [m]</th><th class="n">Kz</th><th class="n">qz [${u.u}]</th><th class="n">p +GCpi</th><th class="n">p −GCpi</th></tr></thead><tbody>` +
+    d.perfil.map((f) => `<tr><td class="n">${fm(f.z)}</td><td class="n">${nf(f.Kz, 3)}</td><td class="n">${nf(u.f(f.q), u.d)}</td><td class="n">${P(f.pos)}</td><td class="n">${P(f.neg)}</td></tr>`).join('') + '</tbody>';
 }
 
 /* ---------------- SIMPLIFICADO ---------------- */

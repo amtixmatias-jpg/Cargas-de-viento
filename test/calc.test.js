@@ -50,3 +50,28 @@ assert.ok(t.combos.length === 4);
 const t2 = N.techumbre(g, { luz: 10, largo: 30, hAlero: 4, tipoTecho: 'dos', theta: 5, direccion: 'normal' });
 console.log(JSON.stringify(t2.combos[0]));
 console.log('OK – todas las verificaciones pasaron');
+
+// ---- Casos ±WX ±WY (SAP) ----
+{
+  const gs = N.galponSAP(g, { largo: 51.8, ancho: 13.9, hAlero: 6.4, tipoTecho: 'dos', theta: 10, sepMarcos: 6 });
+  assert.strictEqual(gs.casos.length, 16);
+  // simetría: +WX y −WX con igual variante dan Fx opuestos
+  const a = gs.casos.find((c) => c.sap === 'WXP_1'), b = gs.casos.find((c) => c.sap === 'WXN_1');
+  near(a.Fx, -b.Fx, 1e-6, 'simetría Fx');
+  near(a.Fz, b.Fz, 1e-6, 'simetría Fz');
+  // presión interna no cambia resultantes
+  near(a.Fx, gs.casos.find((c) => c.sap === 'WXP_2').Fx, 1e-6, 'GCpi no afecta Fx');
+  // muro barlovento +WX con +GCpi = qh·Kd·(G·0,8 − 0,18)
+  const k = gs.qh * 0.85;
+  near(a.muros[0].p, k * (0.85 * 0.8 - 0.18), 1e-9, 'p muro barlovento');
+  // h = altura de alero para θ = 10°
+  near(gs.h, 6.4, 1e-12, 'h con θ ≤ 10°');
+  // 0,0ᵃ no genera caso de succión
+  assert.strictEqual(N.CpTechoBarlovento(40, 0.2).neg, null);
+  // techo plano: frame loads finitos
+  const gp = N.galponSAP(g, { largo: 30, ancho: 12, hAlero: 5, tipoTecho: 'plana', theta: 0, sepMarcos: 5 });
+  for (const c of gp.casos) for (const m of gp.marcos) { const r = gp.cargaMarco(c, m); assert.ok(isFinite(r.colXm) && r.vigas.every((v) => isFinite(v.w))); }
+  const gu = N.galponSAP(g, { largo: 30, ancho: 12, hAlero: 5, tipoTecho: 'una', theta: 15, sepMarcos: 5 });
+  assert.ok(gu.casos.length === 16 && gu.casos.every((c) => isFinite(c.Fx + c.Fy + c.Fz)));
+  console.log('OK – casos SAP');
+}
