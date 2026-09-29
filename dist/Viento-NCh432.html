@@ -140,7 +140,7 @@ details.fold > summary::-webkit-details-marker, details.fold2 > summary::-webkit
 details.fold > summary::before, details.fold2 > summary::before { content: "▸"; color: var(--accent); transition: transform .15s; }
 details.fold[open] > summary::before, details.fold2[open] > summary::before { transform: rotate(90deg); }
 .foldbody { margin-top: 14px; }
-details.fold, details.fold2, #gMarGob > div, #gMarCasos > * { min-width: 0; }
+details.fold, details.fold2, #gMarGob > div, #gMarCasos > *, #gSap > div { min-width: 0; }
 details.fold2 { border: 1px solid var(--line); border-radius: var(--r); padding: 8px 12px; background: var(--panel2); }
 details.fold2 > summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; gap: 8px; align-items: center; }
 details.fold2[open] { background: var(--panel); }
@@ -315,22 +315,29 @@ dialog.proj textarea { width: 100%; min-height: 180px; font-family: var(--font-m
   <div class="card" id="gAnaCard"><h3>Casos de análisis para SAP <span class="cl">lo que hay que modelar</span><button class="btn act" type="button" data-copy="gAnaT">Copiar tabla</button></h3>
     <div id="gAnaRes"></div>
     <div class="tbl"><table id="gAnaT"></table></div>
-    <h4 class="sub4" style="margin-top:16px">Combinaciones de viento de la Fig. 11 con estos estados <span class="cl">modelo 3D</span><button class="btn act" type="button" data-copy="gAnaC">Copiar tabla</button></h4>
-    <div class="tbl"><table id="gAnaC"></table></div>
-    <p class="note" id="gAnaNota"></p>
+  </div>
+  <div class="card"><h3>Cargas para SAP <span class="cl">carga lineal por marco, kgf/m o kN/m según unidades</span></h3>
+    <p class="note" style="margin-top:0" id="gSapNota"></p>
+    <div id="gSap" style="display:grid;gap:18px"></div>
   </div>
   <div class="card"><h3>Presiones por caso · planta y elevación
       <label class="f act" style="min-width:min(100%,360px)"><select id="gVista" aria-label="Caso a visualizar"></select></label></h3>
     <p class="note" id="gVistaDesc" style="margin-top:0"></p>
     <div style="display:grid;gap:10px"><div id="gVP"></div><div id="gVS"></div></div><div class="legend"><span><i style="background:var(--pres)"></i>presión (+), hacia la superficie</span><span><i style="background:var(--succ)"></i>succión (−), alejándose</span></div>
   </div>
-  <div class="card"><h3>Marcos a modelar <span class="cl">modelo 2D, plano XZ</span>
-      <label class="f act" style="min-width:min(100%,340px)"><select id="gMarco" aria-label="Marco"></select></label></h3>
+  <details class="card fold"><summary>Casos de diseño 2, 3 y 4 de la Fig. 11 · combinaciones para el modelo 3D</summary><div class="foldbody">
+    <p class="note" style="margin-top:0">La norma (6.3.5) exige, además de cada estado por separado (caso 1), tres casos de diseño: caso 2, 75 % de un estado con torsión (excentricidad ±0,15B); caso 3, 75 % de un estado X y 75 % de un estado Y a la vez; caso 4, 56,3 % de ambos con torsión. Esto no es el criterio para elegir los estados: son combinaciones que se arman en SAP con los estados de análisis.</p>
+    <div class="act-row"><button class="btn" type="button" data-copy="gAnaC">Copiar tabla</button></div>
+    <div class="tbl"><table id="gAnaC"></table></div>
+    <p class="note" id="gAnaNota"></p>
+  </div></details>
+  <details class="card fold"><summary>Casos de diseño 2, 3 y 4 de la Fig. 11 · por marco (modelo 2D)</summary><div class="foldbody">
+    <label class="f" style="max-width:420px;margin-bottom:10px"><span>Marco</span><select id="gMarco" aria-label="Marco"></select></label>
     <div class="tbl"><table id="gMarRes"></table></div>
     <p class="note" id="gMarResNota"></p>
     <h4 class="sub4" style="margin-top:14px" id="gMarGobTit"></h4>
     <div id="gMarGob" style="display:grid;gap:12px"></div>
-  </div>
+  </div></details>
   <details class="card fold" id="gDet"><summary>Detalle y trazabilidad · todos los patrones, combinaciones y verificaciones</summary>
     <div class="foldbody" style="display:grid;gap:18px">
   <div class="card"><h3>Obtención de los coeficientes</h3><div id="gTraza"></div></div>
@@ -1226,7 +1233,14 @@ dialog.proj textarea { width: 100%; min-height: 180px; font-family: var(--font-m
     const cand = r.casos.filter((c) => !((c.dir === 'X' && simX) || (c.dir === 'Y' && simY)) || c.sentido > 0);
     // Efectos a cubrir: cada uno con su valor por patrón (mayor = más desfavorable)
     const efectos = [];
-    const ef = (txt, fn) => { const v = cand.map(fn); const mx = Math.max(...v); if (mx > tol) efectos.push({ txt, v, mx }); };
+    // Con simetría, un efecto en X+ equivale al de X− (e Y+ a Y−): se fusionan tomando el mayor por patrón
+    const norm = (t) => { let x = t; if (simX) x = x.replace(/X\+/g, 'X−'); if (simY) x = x.replace(/Y\+/g, 'Y−'); return x; };
+    const pushEf = (txt, v) => {
+      const t = norm(txt), e = efectos.find((q) => q.txt === t);
+      if (e) { e.v = e.v.map((x, i) => Math.max(x, v[i])); e.mx = Math.max(...e.v); }
+      else { const mx = Math.max(...v); if (mx > tol) efectos.push({ txt: t, v: v.slice(), mx }); }
+    };
+    const ef = (txt, fn) => pushEf(txt, cand.map(fn));
     const sups = [...new Set(cand.flatMap((c) => [...c.muros.map((m) => m.sup), ...c.techo.map((t) => (t.faldon === 'U' || t.faldon === 'todo') ? 'Techo' : 'Faldón ' + t.faldon)]))];
     const pSup = (c, sup, modo) => {
       const vals = /^(Muro|Frontón)/.test(sup) ? c.muros.filter((m) => m.sup === sup).map((m) => m.p)
@@ -1256,7 +1270,8 @@ dialog.proj textarea { width: 100%; min-height: 180px; font-family: var(--font-m
         for (const [t, x] of pares) { const e = efM[t] || (efM[t] = cand.map(() => -Infinity)); e[i] = Math.max(e[i], x); }
       }
     }
-    for (const [t, v] of Object.entries(efM)) { const mx = Math.max(...v); if (mx > tol) efectos.push({ txt: 'marcos: ' + t, v, mx }); }
+    for (const [t, v] of Object.entries(efM)) pushEf('marcos: ' + t, v);
+    for (let k = efectos.length - 1; k >= 0; k--) if (!(efectos[k].mx > tol)) efectos.splice(k, 1);
     // Cobertura mínima (voraz): un patrón cubre un efecto si llega al 97 % del máximo
     const cubre = efectos.map((e) => e.v.map((x) => x >= 0.97 * e.mx - tol));
     const pendientes = new Set(efectos.map((_, k) => k));
@@ -1268,12 +1283,43 @@ dialog.proj textarea { width: 100%; min-height: 180px; font-family: var(--font-m
       elegidos.push(best);
       for (const k of [...pendientes]) if (cubre[k][best]) pendientes.delete(k);
     }
-    const razones = new Map();
-    for (const i of elegidos) razones.set(cand[i].sap, []);
-    efectos.forEach((e, k) => { const i = elegidos.find((j) => cubre[k][j]); if (i !== undefined) razones.get(cand[i].sap).push(e.txt); });
-    const sel = cand.filter((c) => razones.has(c.sap)).map((c) => ({ c, razones: razones.get(c.sap) }));
+    // Estados de análisis (criterio práctico): por dirección y sentido no espejo, un estado con +GCpi y otro con −GCpi;
+    // la variante de techo es la más desfavorable para ese signo (+GCpi: máximo levantamiento; −GCpi: mínimo levantamiento).
+    // En el Anexo A (sin GCpi) se conservan las variantes de techo, sin repetir espejos.
+    const estados = [];
+    for (const dir of ['X', 'Y']) for (const sen of [1, -1]) {
+      const cs = cand.filter((c) => c.dir === dir && c.sentido === sen);
+      if (!cs.length) continue;
+      if (cs.every((c) => c.gcpi === 0)) {
+        const vistos = [];
+        for (const c of cs) {
+          const key = c.techo.map((t) => t.Cp.toFixed(3)).sort().join(',') + '|' + c.muros.map((m) => m.Cp.toFixed(3)).join(',');
+          if (dir === 'Y' && simX && vistos.includes(key)) continue;
+          vistos.push(key); estados.push(c);
+        }
+      } else for (const sg of [1, -1]) {
+        const gg = cs.filter((c) => Math.sign(c.gcpi) === sg);
+        if (!gg.length) continue;
+        estados.push(sg > 0 ? gg.reduce((b, c) => (c.Fz > b.Fz + tol ? c : b)) : gg.reduce((b, c) => (c.Fz < b.Fz - tol ? c : b)));
+      }
+    }
+    // Qué gobierna cada estado y verificación de cobertura contra todos los patrones
+    const iEst = estados.map((c) => cand.indexOf(c));
+    const razones = new Map(estados.map((c) => [c.sap, []]));
+    const agregados = [];
+    efectos.forEach((e, k) => {
+      const j = iEst.find((i) => cubre[k][i]);
+      if (j !== undefined) razones.get(cand[j].sap).push(e.txt);
+      else {
+        const i = elegidos.find((q) => cubre[k][q]);
+        if (i === undefined) return;
+        if (!razones.has(cand[i].sap)) { razones.set(cand[i].sap, []); estados.push(cand[i]); agregados.push(cand[i].sap); }
+        razones.get(cand[i].sap).push(e.txt);
+      }
+    });
+    const sel = estados.map((c) => ({ c, razones: razones.get(c.sap), agregado: agregados.includes(c.sap) }));
     // Filtro de simetría para las combinaciones de marcos (casos 2 a 4 usan patrones X e Y)
-    const selSap = new Set(elegidos.map((i) => cand[i].sap));
+    const selSap = new Set(estados.map((c) => c.sap));
     // casos 1 y 2: sólo patrones de análisis; casos 3 y 4: sólo sentidos no espejo
     const okNombre = (n) => {
       if ((simX && /WXN|−X/.test(n)) || (simY && /WYN|−Y/.test(n))) return false;
@@ -1315,6 +1361,44 @@ dialog.proj textarea { width: 100%; min-height: 180px; font-family: var(--font-m
     for (const it of items) { upd('colXm', it.colXm, it.nombre); upd('colXp', it.colXp, it.nombre); for (const v of it.vigas) upd('viga' + v.faldon, v.w, it.nombre); }
     return e;
   }
+  /**
+   * Cargas lineales para SAP por estado, agrupando marcos con cargas iguales (p. ej. exteriores, interiores,
+   * o un marco con otro ancho tributario). Filas relativas al viento: barlovento / sotavento / lateral.
+   */
+  function cargasSAP(r, c, geo) {
+    const grupos = [];
+    for (const mc of r.marcos) {
+      const l = r.cargaMarco(c, mc);
+      const key = [l.colXm, l.colXp, ...l.vigas.map((v) => v.faldon + v.a.toFixed(2) + v.b.toFixed(2) + ':' + v.w.toFixed(1))].map((x) => typeof x === 'number' ? x.toFixed(1) : x).join('|');
+      const g = grupos.find((q) => q.key === key);
+      if (g) g.marcos.push(mc); else grupos.push({ key, marcos: [mc], l });
+    }
+    const S_ = geo.ancho;
+    const filas = [];
+    const vig = (l, fal) => l.vigas.filter((v) => v.faldon === fal || (fal === 'X−' && v.faldon === 'U'));
+    if (c.dir === 'X') {
+      const barl = c.sentido > 0 ? 'X−' : 'X+', sot = c.sentido > 0 ? 'X+' : 'X−';
+      const pLat = c.muros.find((m) => m.sup === 'Frontón Y−').p;
+      filas.push({ el: 'Muro barlovento', ref: 'columna ' + barl, f: (g) => [{ w: barl === 'X−' ? g.l.colXm : g.l.colXp }] });
+      filas.push({ el: 'Muro sotavento', ref: 'columna ' + sot, f: (g) => [{ w: sot === 'X−' ? g.l.colXm : g.l.colXp }] });
+      filas.push({ el: 'Muro lateral', ref: 'frontones (p × ancho trib.)', f: (g) => [{ w: pLat * g.marcos[0].trib }] });
+      if (geo.tipoTecho === 'una') filas.push({ el: 'Techo', ref: c.sentido > 0 ? 'viga, viento desde lado bajo' : 'viga, viento desde lado alto', f: (g) => vig(g.l, 'X−') });
+      else {
+        filas.push({ el: 'Techo barlovento', ref: 'viga faldón ' + barl, f: (g) => vig(g.l, barl) });
+        filas.push({ el: 'Techo sotavento', ref: 'viga faldón ' + sot, f: (g) => vig(g.l, sot) });
+      }
+    } else {
+      filas.push({ el: 'Muro lateral', ref: 'columnas X− y X+', f: (g) => [{ w: g.l.colXm }] });
+      if (geo.tipoTecho === 'una') filas.push({ el: 'Techo', ref: 'viga', f: (g) => vig(g.l, 'X−') });
+      else {
+        filas.push({ el: 'Techo faldón X−', ref: 'viga faldón X−', f: (g) => vig(g.l, 'X−') });
+        filas.push({ el: 'Techo faldón X+', ref: 'viga faldón X+', f: (g) => vig(g.l, 'X+') });
+      }
+    }
+    const fr = c.dir === 'Y' ? { barl: c.muros.find((m) => m.rol === 'barlovento'), sot: c.muros.find((m) => m.rol === 'sotavento') } : null;
+    return { grupos, filas, frontones: fr, ancho: S_ };
+  }
+
   /** Combinaciones que gobiernan algún elemento del marco en cada caso de diseño (sin repetir), con filtro opcional. */
   function combosGobernantes(cm, ok) {
     const out = {};
@@ -1653,7 +1737,7 @@ dialog.proj textarea { width: 100%; min-height: 180px; font-family: var(--font-m
     G_ACC, ZONAS, IMPORTANCIA, KD, EXPOSICION, TERRENO, TABLA5, TABLA4, CERRAMIENTO, TOPO,
     lerp, round, Nm2_to_kgf, Kz, Ke, Kzt, qz, clasificarCerramiento, Ri,
     CpSotavento, CpTechoBarlovento, CpTechoSotavento, CpTechoZona, zonasTecho, CpZonaPromedio,
-    GCpfA, ENV_A, ENV_B, direccional, galponSAP, anexoA, CA1, CA2, procesarCasos, parseEjes, letraEje, casosMarco, analisisGalpon, combosGobernantes, cyrMuro, GCpMuro, trazaCpTecho, redArea, simplificado, contenedor, techumbre,
+    GCpfA, ENV_A, ENV_B, direccional, galponSAP, anexoA, CA1, CA2, procesarCasos, parseEjes, letraEje, casosMarco, analisisGalpon, combosGobernantes, cargasSAP, cyrMuro, GCpMuro, trazaCpTecho, redArea, simplificado, contenedor, techumbre,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NCh432 = api;
@@ -2188,27 +2272,54 @@ function resumenTecho(c, fal) {
   const v = ts.map((t) => t.p), mn = Math.min(...v), mx = Math.max(...v);
   return Math.abs(mx - mn) < 1e-6 ? P(mn) : `${P(mn)} … ${P(mx)}`;
 }
+function rangoEjes(ms) {
+  const n = ms.map((m) => +m.eje).sort((a, b) => a - b), out = [];
+  for (let i = 0; i < n.length; i++) { let j = i; while (j + 1 < n.length && n[j + 1] === n[j] + 1) j++; out.push(j - i >= 2 ? `${n[i]}–${n[j]}` : n.slice(i, j + 1).join(', ')); i = j; }
+  return out.join(', ');
+}
+function renderSAP(r, an, geo, anexo) {
+  const u = U(), nM = r.marcos.length;
+  const grupoTxt = (g, todos) => {
+    const ext = g.marcos.some((m) => m.i === 1 || m.i === nM);
+    const mayor = todos.reduce((b, q) => (q.marcos.length > b.marcos.length ? q : b), todos[0]);
+    const tipo = ext ? 'exterior' : g === mayor ? 'interior' : 'intermedio';
+    return `Ejes ${rangoEjes(g.marcos)}<br><span class="sub">${tipo} · trib. ${fm(g.marcos[0].trib)} m</span>`;
+  };
+  const cel = (vs) => vs.map((v) => `${Wl(v.w)}${vs.length > 1 ? ` <span class="sub">(x ${fm(v.a)}–${fm(v.b)})</span>` : ''}`).join('<br>');
+  $('gSap').innerHTML = an.sel.map(({ c }, k) => {
+    const d = N.cargasSAP(r, c, geo);
+    const gcpi = anexo ? '' : ` · GCpi ${c.gcpi > 0 ? '+' : '−'}${nf(Math.abs(c.gcpi), 2)}`;
+    const tit = `${c.dir === 'X' ? 'Dirección X' : 'Dirección Y'} · ${c.nombre}${gcpi}`;
+    const fr = d.frontones ? `<p class="note">Frontones (pilares, no van en el marco transversal): barlovento ${P(d.frontones.barl.p)} y sotavento ${P(d.frontones.sot.p)} ${u.u}. En el marco extremo, el frontón se modela con sus propios pilares; ver "Pilares de frontón" en el detalle.</p>` : '';
+    return `<div><h4 class="sub4">${tit} <span class="cl">${c.sap} · ${c.variante.nombre}</span><button class="btn act" type="button" data-copy="gSapT${k}">Copiar tabla</button></h4>
+      <div class="tbl"><table id="gSapT${k}"><thead><tr><th>Elemento</th><th>Se aplica en</th>${d.grupos.map((g) => `<th class="n" style="text-transform:none">${grupoTxt(g, d.grupos)}</th>`).join('')}</tr></thead><tbody>
+      ${d.filas.map((f) => `<tr><td>${f.el}</td><td class="sub">${f.ref}</td>${d.grupos.map((g) => `<td class="n">${cel(f.f(g))}</td>`).join('')}</tr>`).join('')}
+      </tbody></table></div>${fr}</div>`;
+  }).join('');
+  $('gSapNota').innerHTML = `Carga lineal w = p × ancho tributario del marco, en ${u.ul}. Signo +: empuja hacia la superficie (hacia el interior en columnas, hacia abajo en vigas); −: succión. En SAP aplique la carga perpendicular al elemento. Los marcos se agrupan cuando reciben la misma carga: con viento en X sólo cambia el ancho tributario; con viento en Y además cambia el techo según la distancia al frontón de barlovento. ${an.simY ? 'Por simetría, −WY da las mismas cargas invirtiendo el orden de los ejes.' : ''}`;
+}
 function renderAnalisis(r, an, geo, anexo) {
   const u = U(), F = FU(), mm = unit === 'kgf' ? 'kgf·m' : 'kN·m';
   const una = geo.tipoTecho === 'una';
   const sim = [an.simX ? '−WX es espejo de +WX (techo simétrico)' : 'techo de una agua: +WX y −WX son distintos', an.simY ? '−WY es espejo de +WY (vanos simétricos en Y)' : 'vanos no simétricos en Y: +WY y −WY son distintos'];
-  $('gAnaRes').innerHTML = `<p style="margin:0 0 10px"><b style="font-size:17px">${an.sel.length} estados de viento</b> <span class="note">de ${r.casos.length} patrones calculados. ${sim.join('; ')}. Se conservan sólo los patrones necesarios para cubrir el efecto más desfavorable de cada superficie, del corte, del levantamiento y de cada elemento de los marcos (con tolerancia de 3 %).</span></p>`;
+  const agr = an.sel.filter((x) => x.agregado).map((x) => x.c.sap);
+  $('gAnaRes').innerHTML = `<p style="margin:0 0 10px"><b style="font-size:17px">${an.sel.length} estados de viento</b> <span class="note">de ${r.casos.length} patrones calculados. ${sim.join('; ')}. ${anexo ? 'Por dirección se conservan los casos de techo del Anexo A.' : 'Por dirección se toma un estado con +GCpi (variante de techo con mayor levantamiento) y otro con −GCpi (variante con menor levantamiento).'} La columna "Gobierna" muestra qué efectos controla cada estado; se verificó contra los ${r.casos.length} patrones que ninguno queda sin cubrir (tolerancia 3 %)${agr.length ? `, para lo cual se agregó ${agr.join(', ')}` : ''}. Todos los estados de WX y WY se entregan aunque no gobiernen.</span></p>`;
   $('gAnaT').innerHTML = `<thead><tr><th>Estado SAP</th><th>Descripción</th><th class="n">Muro X−</th><th class="n">Muro X+</th><th class="n">Frontón Y−</th><th class="n">Frontón Y+</th>${una ? '<th class="n">Techo</th>' : '<th class="n">Faldón X−</th><th class="n">Faldón X+</th>'}<th>Gobierna</th></tr></thead><tbody>` +
     an.sel.map(({ c, razones }) => { const m = (s_) => P(c.muros.find((x) => x.sup === s_).p);
       return `<tr><td class="mono"><b>${c.sap}</b></td><td>${c.desc}</td><td class="n">${m('Muro X−')}</td><td class="n">${m('Muro X+')}</td><td class="n">${m('Frontón Y−')}</td><td class="n">${m('Frontón Y+')}</td>
-      ${una ? `<td class="n">${resumenTecho(c, 'X−')}</td>` : `<td class="n">${resumenTecho(c, 'X−')}</td><td class="n">${resumenTecho(c, 'X+')}</td>`}<td>${razones.map((t) => `<span class="pill ok">${t}</span>`).join(' ')}</td></tr>`; }).join('') + '</tbody>';
+      ${una ? `<td class="n">${resumenTecho(c, 'X−')}</td>` : `<td class="n">${resumenTecho(c, 'X−')}</td><td class="n">${resumenTecho(c, 'X+')}</td>`}<td>${razones.length ? razones.map((t) => `<span class="pill ok">${t}</span>`).join(' ') : '<span class="note">no gobierna; se deja como referencia</span>'}</td></tr>`; }).join('') + '</tbody>';
   // Fig. 11 con los estados de análisis
   const X = an.sel.filter((x) => x.c.dir === 'X').map((x) => x.c), Y = an.sel.filter((x) => x.c.dir === 'Y').map((x) => x.c);
   const tz = Object.fromEntries(r.torsion.map((t) => [t.dir, t]));
   const rows = [];
-  for (const c of [...X, ...Y]) rows.push(['Caso 1', c.sap, `1,0·${c.sap}_M + 1,0·${c.sap}_T`]);
   for (const c of [...X, ...Y]) rows.push(['Caso 2', c.sap, `0,75·${c.sap}_M + 0,75·${c.sap}_T ± MZ${c.dir} (${nf(F.f(tz[c.dir] ? tz[c.dir].Mz : 0), F.d)} ${mm})`]);
   const pares = [];
   for (const x of X) for (const y of Y) if (anexo || Math.sign(x.gcpi) === Math.sign(y.gcpi)) pares.push([x, y]);
   for (const [x, y] of pares) { const t = x.Fz >= y.Fz ? x : y; rows.push(['Caso 3', x.sap + ' + ' + y.sap, `0,75·${x.sap}_M + 0,75·${y.sap}_M + 1,0·${t.sap}_T`]); }
   for (const [x, y] of pares) { const t = x.Fz >= y.Fz ? x : y; rows.push(['Caso 4', x.sap + ' + ' + y.sap, `0,563·${x.sap}_M + 0,563·${y.sap}_M + 0,75·${t.sap}_T ± MZ4 (${nf(F.f((tz.X ? tz.X.Mz4 : 0) + (tz.Y ? tz.Y.Mz4 : 0)), F.d)} ${mm})`]); }
   $('gAnaC').innerHTML = `<thead><tr><th>Caso Fig. 11</th><th>Estados</th><th>Combinación en SAP</th></tr></thead><tbody>` + rows.map((x) => `<tr><td>${x[0]}</td><td class="mono">${x[1]}</td><td class="mono">${x[2]}</td></tr>`).join('') + '</tbody>';
-  $('gAnaNota').innerHTML = `Defina cada estado como dos <i>load patterns</i>: …_M (presiones en muros) y …_T (presiones en techo), con los valores de la tabla y de "Presiones por caso". Así se aplican los factores de la Fig. 11: caso 2 muros y techo al 75 %; caso 3 muros al 75 % y el techo del estado con mayor levantamiento al 100 %; caso 4 muros al 56,3 % y techo al 75 %. MZ es el momento torsor por la excentricidad ±0,15B (caso 4: suma de ambas direcciones); en diafragma flexible reemplácelo por el bloque de presión equivalente, como en las tablas de marcos. En los casos 3 y 4 se combinan estados con el mismo signo de GCpi.${an.simX || an.simY ? ' Por simetría, los sentidos espejo no requieren análisis adicional si la estructura también es simétrica.' : ''}`;
+  renderSAP(r, an, geo, anexo);
+  $('gAnaNota').innerHTML = `El caso 1 son los estados de la tabla, cada uno por separado. Para los casos 2 a 4 defina cada estado como dos <i>load patterns</i>: …_M (presiones en muros) y …_T (presiones en techo), con los valores de la tabla y de "Presiones por caso". Así se aplican los factores de la Fig. 11: caso 2 muros y techo al 75 %; caso 3 muros al 75 % y el techo del estado con mayor levantamiento al 100 %; caso 4 muros al 56,3 % y techo al 75 %. MZ es el momento torsor por la excentricidad ±0,15B (caso 4: suma de ambas direcciones); en diafragma flexible reemplácelo por el bloque de presión equivalente, como en las tablas de marcos. En los casos 3 y 4 se combinan estados con el mismo signo de GCpi.${an.simX || an.simY ? ' Por simetría, los sentidos espejo no requieren análisis adicional si la estructura también es simétrica.' : ''}`;
 }
 function renderMarcosAnalisis(r, an, geo, mi) {
   const una = geo.tipoTecho === 'una';

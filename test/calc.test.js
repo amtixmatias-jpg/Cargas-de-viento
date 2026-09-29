@@ -142,3 +142,15 @@ console.log('OK – todas las verificaciones pasaron');
   assert.ok(!au.simX && au.sel.some((x) => x.c.dir === 'X'));
   console.log('OK – casos de análisis');
 }
+
+// ---- Estados prácticos y cargas SAP agrupadas ----
+{
+  const e = N.parseEjes('5.2, 6*6.9, 5.2');
+  const geo = { largo: e.total, ancho: 13.9, hAlero: 6.4, tipoTecho: 'dos', theta: 10, ejesY: e.pos, ejesX: [0, 6.95, 13.9] };
+  const r = N.galponSAP(g, geo);
+  const cs = N.cargasSAP(r, r.casos.find((c) => c.sap === 'WXP_1'), geo);
+  assert.deepStrictEqual(cs.grupos.map((q) => q.marcos.map((m) => m.eje).join(',')), ['1,9', '2,8', '3,4,5,6,7']);
+  const ra = N.anexoA({ V: 37, p0: 839, exp: 'C', kzMetodo: 'tabla', cat: 'II', cerramiento: 'cerrado', topo: false }, geo);
+  assert.deepStrictEqual(N.analisisGalpon(ra, geo).sel.map((x) => x.c.sap), ['WXP_1', 'WYP_1']);
+  console.log('OK – estados y cargas SAP');
+}

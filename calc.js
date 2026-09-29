@@ -736,7 +736,14 @@
     const cand = r.casos.filter((c) => !((c.dir === 'X' && simX) || (c.dir === 'Y' && simY)) || c.sentido > 0);
     // Efectos a cubrir: cada uno con su valor por patrón (mayor = más desfavorable)
     const efectos = [];
-    const ef = (txt, fn) => { const v = cand.map(fn); const mx = Math.max(...v); if (mx > tol) efectos.push({ txt, v, mx }); };
+    // Con simetría, un efecto en X+ equivale al de X− (e Y+ a Y−): se fusionan tomando el mayor por patrón
+    const norm = (t) => { let x = t; if (simX) x = x.replace(/X\+/g, 'X−'); if (simY) x = x.replace(/Y\+/g, 'Y−'); return x; };
+    const pushEf = (txt, v) => {
+      const t = norm(txt), e = efectos.find((q) => q.txt === t);
+      if (e) { e.v = e.v.map((x, i) => Math.max(x, v[i])); e.mx = Math.max(...e.v); }
+      else { const mx = Math.max(...v); if (mx > tol) efectos.push({ txt: t, v: v.slice(), mx }); }
+    };
+    const ef = (txt, fn) => pushEf(txt, cand.map(fn));
     const sups = [...new Set(cand.flatMap((c) => [...c.muros.map((m) => m.sup), ...c.techo.map((t) => (t.faldon === 'U' || t.faldon === 'todo') ? 'Techo' : 'Faldón ' + t.faldon)]))];
     const pSup = (c, sup, modo) => {
       const vals = /^(Muro|Frontón)/.test(sup) ? c.muros.filter((m) => m.sup === sup).map((m) => m.p)
@@ -766,7 +773,8 @@
         for (const [t, x] of pares) { const e = efM[t] || (efM[t] = cand.map(() => -Infinity)); e[i] = Math.max(e[i], x); }
       }
     }
-    for (const [t, v] of Object.entries(efM)) { const mx = Math.max(...v); if (mx > tol) efectos.push({ txt: 'marcos: ' + t, v, mx }); }
+    for (const [t, v] of Object.entries(efM)) pushEf('marcos: ' + t, v);
+    for (let k = efectos.length - 1; k >= 0; k--) if (!(efectos[k].mx > tol)) efectos.splice(k, 1);
     // Cobertura mínima (voraz): un patrón cubre un efecto si llega al 97 % del máximo
     const cubre = efectos.map((e) => e.v.map((x) => x >= 0.97 * e.mx - tol));
     const pendientes = new Set(efectos.map((_, k) => k));
@@ -778,12 +786,43 @@
       elegidos.push(best);
       for (const k of [...pendientes]) if (cubre[k][best]) pendientes.delete(k);
     }
-    const razones = new Map();
-    for (const i of elegidos) razones.set(cand[i].sap, []);
-    efectos.forEach((e, k) => { const i = elegidos.find((j) => cubre[k][j]); if (i !== undefined) razones.get(cand[i].sap).push(e.txt); });
-    const sel = cand.filter((c) => razones.has(c.sap)).map((c) => ({ c, razones: razones.get(c.sap) }));
+    // Estados de análisis (criterio práctico): por dirección y sentido no espejo, un estado con +GCpi y otro con −GCpi;
+    // la variante de techo es la más desfavorable para ese signo (+GCpi: máximo levantamiento; −GCpi: mínimo levantamiento).
+    // En el Anexo A (sin GCpi) se conservan las variantes de techo, sin repetir espejos.
+    const estados = [];
+    for (const dir of ['X', 'Y']) for (const sen of [1, -1]) {
+      const cs = cand.filter((c) => c.dir === dir && c.sentido === sen);
+      if (!cs.length) continue;
+      if (cs.every((c) => c.gcpi === 0)) {
+        const vistos = [];
+        for (const c of cs) {
+          const key = c.techo.map((t) => t.Cp.toFixed(3)).sort().join(',') + '|' + c.muros.map((m) => m.Cp.toFixed(3)).join(',');
+          if (dir === 'Y' && simX && vistos.includes(key)) continue;
+          vistos.push(key); estados.push(c);
+        }
+      } else for (const sg of [1, -1]) {
+        const gg = cs.filter((c) => Math.sign(c.gcpi) === sg);
+        if (!gg.length) continue;
+        estados.push(sg > 0 ? gg.reduce((b, c) => (c.Fz > b.Fz + tol ? c : b)) : gg.reduce((b, c) => (c.Fz < b.Fz - tol ? c : b)));
+      }
+    }
+    // Qué gobierna cada estado y verificación de cobertura contra todos los patrones
+    const iEst = estados.map((c) => cand.indexOf(c));
+    const razones = new Map(estados.map((c) => [c.sap, []]));
+    const agregados = [];
+    efectos.forEach((e, k) => {
+      const j = iEst.find((i) => cubre[k][i]);
+      if (j !== undefined) razones.get(cand[j].sap).push(e.txt);
+      else {
+        const i = elegidos.find((q) => cubre[k][q]);
+        if (i === undefined) return;
+        if (!razones.has(cand[i].sap)) { razones.set(cand[i].sap, []); estados.push(cand[i]); agregados.push(cand[i].sap); }
+        razones.get(cand[i].sap).push(e.txt);
+      }
+    });
+    const sel = estados.map((c) => ({ c, razones: razones.get(c.sap), agregado: agregados.includes(c.sap) }));
     // Filtro de simetría para las combinaciones de marcos (casos 2 a 4 usan patrones X e Y)
-    const selSap = new Set(elegidos.map((i) => cand[i].sap));
+    const selSap = new Set(estados.map((c) => c.sap));
     // casos 1 y 2: sólo patrones de análisis; casos 3 y 4: sólo sentidos no espejo
     const okNombre = (n) => {
       if ((simX && /WXN|−X/.test(n)) || (simY && /WYN|−Y/.test(n))) return false;
@@ -825,6 +864,44 @@
     for (const it of items) { upd('colXm', it.colXm, it.nombre); upd('colXp', it.colXp, it.nombre); for (const v of it.vigas) upd('viga' + v.faldon, v.w, it.nombre); }
     return e;
   }
+  /**
+   * Cargas lineales para SAP por estado, agrupando marcos con cargas iguales (p. ej. exteriores, interiores,
+   * o un marco con otro ancho tributario). Filas relativas al viento: barlovento / sotavento / lateral.
+   */
+  function cargasSAP(r, c, geo) {
+    const grupos = [];
+    for (const mc of r.marcos) {
+      const l = r.cargaMarco(c, mc);
+      const key = [l.colXm, l.colXp, ...l.vigas.map((v) => v.faldon + v.a.toFixed(2) + v.b.toFixed(2) + ':' + v.w.toFixed(1))].map((x) => typeof x === 'number' ? x.toFixed(1) : x).join('|');
+      const g = grupos.find((q) => q.key === key);
+      if (g) g.marcos.push(mc); else grupos.push({ key, marcos: [mc], l });
+    }
+    const S_ = geo.ancho;
+    const filas = [];
+    const vig = (l, fal) => l.vigas.filter((v) => v.faldon === fal || (fal === 'X−' && v.faldon === 'U'));
+    if (c.dir === 'X') {
+      const barl = c.sentido > 0 ? 'X−' : 'X+', sot = c.sentido > 0 ? 'X+' : 'X−';
+      const pLat = c.muros.find((m) => m.sup === 'Frontón Y−').p;
+      filas.push({ el: 'Muro barlovento', ref: 'columna ' + barl, f: (g) => [{ w: barl === 'X−' ? g.l.colXm : g.l.colXp }] });
+      filas.push({ el: 'Muro sotavento', ref: 'columna ' + sot, f: (g) => [{ w: sot === 'X−' ? g.l.colXm : g.l.colXp }] });
+      filas.push({ el: 'Muro lateral', ref: 'frontones (p × ancho trib.)', f: (g) => [{ w: pLat * g.marcos[0].trib }] });
+      if (geo.tipoTecho === 'una') filas.push({ el: 'Techo', ref: c.sentido > 0 ? 'viga, viento desde lado bajo' : 'viga, viento desde lado alto', f: (g) => vig(g.l, 'X−') });
+      else {
+        filas.push({ el: 'Techo barlovento', ref: 'viga faldón ' + barl, f: (g) => vig(g.l, barl) });
+        filas.push({ el: 'Techo sotavento', ref: 'viga faldón ' + sot, f: (g) => vig(g.l, sot) });
+      }
+    } else {
+      filas.push({ el: 'Muro lateral', ref: 'columnas X− y X+', f: (g) => [{ w: g.l.colXm }] });
+      if (geo.tipoTecho === 'una') filas.push({ el: 'Techo', ref: 'viga', f: (g) => vig(g.l, 'X−') });
+      else {
+        filas.push({ el: 'Techo faldón X−', ref: 'viga faldón X−', f: (g) => vig(g.l, 'X−') });
+        filas.push({ el: 'Techo faldón X+', ref: 'viga faldón X+', f: (g) => vig(g.l, 'X+') });
+      }
+    }
+    const fr = c.dir === 'Y' ? { barl: c.muros.find((m) => m.rol === 'barlovento'), sot: c.muros.find((m) => m.rol === 'sotavento') } : null;
+    return { grupos, filas, frontones: fr, ancho: S_ };
+  }
+
   /** Combinaciones que gobiernan algún elemento del marco en cada caso de diseño (sin repetir), con filtro opcional. */
   function combosGobernantes(cm, ok) {
     const out = {};
@@ -1163,7 +1240,7 @@
     G_ACC, ZONAS, IMPORTANCIA, KD, EXPOSICION, TERRENO, TABLA5, TABLA4, CERRAMIENTO, TOPO,
     lerp, round, Nm2_to_kgf, Kz, Ke, Kzt, qz, clasificarCerramiento, Ri,
     CpSotavento, CpTechoBarlovento, CpTechoSotavento, CpTechoZona, zonasTecho, CpZonaPromedio,
-    GCpfA, ENV_A, ENV_B, direccional, galponSAP, anexoA, CA1, CA2, procesarCasos, parseEjes, letraEje, casosMarco, analisisGalpon, combosGobernantes, cyrMuro, GCpMuro, trazaCpTecho, redArea, simplificado, contenedor, techumbre,
+    GCpfA, ENV_A, ENV_B, direccional, galponSAP, anexoA, CA1, CA2, procesarCasos, parseEjes, letraEje, casosMarco, analisisGalpon, combosGobernantes, cargasSAP, cyrMuro, GCpMuro, trazaCpTecho, redArea, simplificado, contenedor, techumbre,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NCh432 = api;
