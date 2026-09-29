@@ -561,7 +561,17 @@ function abrirDialogo(modo) {
 function textoProyecto() {
   return JSON.stringify({ app: 'viento-nch432', version: 1, fecha: new Date().toISOString(), nombre: $('dNombre').value || S.proyecto || '', unidades: unit, datos: S }, null, 1);
 }
-function descargar(nombre, texto) {
+// Descarga: en el visor de claude.ai usa la capacidad "downloads"; en el archivo portable, un enlace normal.
+let dlCap;
+async function descargar(nombre, texto) {
+  try {
+    if (dlCap === undefined) dlCap = (window.claude && typeof window.claude.use === 'function') ? await window.claude.use('downloads') : null;
+  } catch (e) { dlCap = null; }
+  if (dlCap) {
+    try { await dlCap.save({ filename: nombre, data: texto }); toast('Archivo guardado'); }
+    catch (e) { toast(e && e.code === 'declined' ? 'Descarga cancelada' : 'No se pudo descargar: copie el texto'); }
+    return;
+  }
   try {
     const b = new Blob([texto], { type: 'application/json' });
     const a = document.createElement('a');
