@@ -29,6 +29,7 @@ Parámetros generales (columna izquierda): zona, V y p0 (Tabla 1), I (Tabla 2), 
 - Para θ ≤ 10° se usa h = altura de alero (Fig. 4). Los valores 0,0ᵃ solo se usan para interpolar (nota 2 de la Fig. 4).
 - Anexo A caso 2 (dos aguas): la Tabla A.1 indica 0,7 para superficies perpendiculares al viento y el esquema de la Fig. A.1 indica +0,60 en el muro frontal; por defecto se usa 0,7 (opción para 0,60).
 - El 9.10 de la norma ("Contenedores, silos y tanques circulares") no trata contenedores de oficina.
+- Galpón, casos de análisis: se descartan los sentidos espejo (techo simétrico, vanos simétricos) y se conserva el conjunto mínimo de patrones que cubre, con 3 % de tolerancia, el efecto más desfavorable de cada superficie, de Fx, Fy, Fz y de cada elemento de los marcos. Igual para los marcos a modelar. El detalle completo queda plegado.
 - Fig. 11: caso 2 techo al 75 % del caso 1; caso 3 techo 100 % del mayor del caso 1; caso 4 techo 100 % del mayor del caso 2. Los factores se aplican a la presión de diseño p (incluye GCpi).
 - Pendiente: C&R de techo (costaneras y planchas, Figs. 26 a 36); casos de torsión de la Fig. 13 (cap. 7).
 

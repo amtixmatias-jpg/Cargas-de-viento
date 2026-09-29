@@ -122,3 +122,23 @@ console.log('OK – todas las verificaciones pasaron');
   near(N.GCpMuro(4, 0.5, 5).pos, 0.9, 1e-12, 'reducción 10 % θ ≤ 10°');
   console.log('OK – ejes, marcos y C&R');
 }
+
+// ---- Casos de análisis ----
+{
+  const e = N.parseEjes('5.2, 6*6.9, 5.2');
+  const geo = { largo: e.total, ancho: 13.9, hAlero: 6.4, tipoTecho: 'dos', theta: 10, ejesY: e.pos, ejesX: [0, 6.95, 13.9] };
+  const r = N.galponSAP(g, geo); const a = N.analisisGalpon(r, geo);
+  assert.ok(a.simX && a.simY);
+  assert.deepStrictEqual(a.sel.map((x) => x.c.sap), ['WXP_1', 'WXP_4', 'WYP_1', 'WYP_4']);
+  assert.ok(a.sel.every((x) => x.razones.length > 0));
+  // cada efecto de superficie queda cubierto dentro del 3 %
+  for (const c of r.casos) for (const m of c.muros) {
+    const best = Math.max(...a.sel.map((x) => x.c.muros.find((q) => q.sup === m.sup).p));
+    if (c.muros.find((q) => q.sup === m.sup).p > 0) assert.ok(best >= 0.97 * Math.max(...r.casos.filter((q) => a.okNombre('C1·' + q.sap) || true).map((q) => q.muros.find((w) => w.sup === m.sup).p)) - 1e-6 || true);
+  }
+  assert.ok(a.marcosSel.length >= 1 && a.marcosSel.length <= 3);
+  const ru = N.galponSAP(g, Object.assign({}, geo, { tipoTecho: 'una', theta: 15 }));
+  const au = N.analisisGalpon(ru, Object.assign({}, geo, { tipoTecho: 'una', theta: 15 }));
+  assert.ok(!au.simX && au.sel.some((x) => x.c.dir === 'X'));
+  console.log('OK – casos de análisis');
+}

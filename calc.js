@@ -718,6 +718,131 @@
     const red = th <= 10 ? 0.9 : 1;
     return { pos: pos * red, neg: neg * red, red };
   }
+  /**
+   * Selección de los casos de análisis (lo que se modela en SAP):
+   *  1) Simetría: con techo a dos aguas o plano, −WX es espejo de +WX; si los vanos en Y son simétricos, −WY es espejo de +WY.
+   *     Se conserva sólo el sentido positivo de la dirección simétrica.
+   *  2) Dominancia: de los patrones restantes se conservan los que gobiernan al menos un efecto: presión o succión
+   *     máxima de una superficie, corte Fx/Fy, levantamiento Fz (máx. y mín.), o un esfuerzo extremo de columna o viga
+   *     en algún marco (caso 1).
+   *  Para los casos 2 a 4 de la Fig. 11 se reportan, por marco, sólo las combinaciones que gobiernan algún elemento.
+   */
+  function analisisGalpon(r, geo) {
+    const tol = 1e-6;
+    const simX = geo.tipoTecho !== 'una';
+    const pos = geo.ejesY || [0, geo.largo];
+    const sep = pos.slice(1).map((y, i) => y - pos[i]);
+    const simY = sep.every((d, i) => Math.abs(d - sep[sep.length - 1 - i]) < tol);
+    const cand = r.casos.filter((c) => !((c.dir === 'X' && simX) || (c.dir === 'Y' && simY)) || c.sentido > 0);
+    // Efectos a cubrir: cada uno con su valor por patrón (mayor = más desfavorable)
+    const efectos = [];
+    const ef = (txt, fn) => { const v = cand.map(fn); const mx = Math.max(...v); if (mx > tol) efectos.push({ txt, v, mx }); };
+    const sups = [...new Set(cand.flatMap((c) => [...c.muros.map((m) => m.sup), ...c.techo.map((t) => (t.faldon === 'U' || t.faldon === 'todo') ? 'Techo' : 'Faldón ' + t.faldon)]))];
+    const pSup = (c, sup, modo) => {
+      const vals = /^(Muro|Frontón)/.test(sup) ? c.muros.filter((m) => m.sup === sup).map((m) => m.p)
+        : c.techo.filter((t) => t.faldon === 'todo' || t.faldon === 'U' || 'Faldón ' + t.faldon === sup).map((t) => t.p);
+      return vals.length ? (modo > 0 ? Math.max(...vals) : Math.min(...vals)) : 0;
+    };
+    for (const sup of sups) { ef('máx. presión ' + sup, (c) => pSup(c, sup, 1)); ef('máx. succión ' + sup, (c) => -pSup(c, sup, -1)); }
+    ef('máx. corte Fx', (c) => Math.abs(c.Fx)); ef('máx. corte Fy', (c) => Math.abs(c.Fy));
+    ef('máx. levantamiento', (c) => c.Fz); ef('carga de techo hacia abajo', (c) => -c.Fz);
+    const marcosRes = r.marcos.map((mc) => {
+      const cm = casosMarco(r, mc, geo.largo);
+      return { mc, cm };
+    });
+    const idx = new Map(cand.map((c, i) => [c.sap, i]));
+    const elemVals = (it) => {
+      const o = { 'columna X−': it.colXm, 'columna X+': it.colXp };
+      for (const v of it.vigas) { const k = 'viga ' + (v.faldon === 'U' ? 'techo' : v.faldon); o[k + '|+'] = Math.max(o[k + '|+'] ?? -Infinity, v.w); o[k + '|-'] = Math.min(o[k + '|-'] ?? Infinity, v.w); }
+      return o;
+    };
+    const efM = {};
+    for (const m of marcosRes) for (const it of m.cm.c1) {
+      const i = idx.get(it.nombre.slice(3)); if (i === undefined) continue;
+      const o = elemVals(it);
+      for (const [k, val] of Object.entries(o)) {
+        const base = k.replace(/\|[+-]$/, '');
+        const pares = k.endsWith('|+') ? [['máx. + ' + base, val]] : k.endsWith('|-') ? [['máx. − ' + base, -val]] : [['máx. + ' + k, val], ['máx. − ' + k, -val]];
+        for (const [t, x] of pares) { const e = efM[t] || (efM[t] = cand.map(() => -Infinity)); e[i] = Math.max(e[i], x); }
+      }
+    }
+    for (const [t, v] of Object.entries(efM)) { const mx = Math.max(...v); if (mx > tol) efectos.push({ txt: 'marcos: ' + t, v, mx }); }
+    // Cobertura mínima (voraz): un patrón cubre un efecto si llega al 97 % del máximo
+    const cubre = efectos.map((e) => e.v.map((x) => x >= 0.97 * e.mx - tol));
+    const pendientes = new Set(efectos.map((_, k) => k));
+    const elegidos = [];
+    while (pendientes.size) {
+      let best = -1, nb = -1;
+      cand.forEach((c, i) => { if (elegidos.includes(i)) return; let n = 0; for (const k of pendientes) if (cubre[k][i]) n++; if (n > nb) { nb = n; best = i; } });
+      if (nb <= 0) break;
+      elegidos.push(best);
+      for (const k of [...pendientes]) if (cubre[k][best]) pendientes.delete(k);
+    }
+    const razones = new Map();
+    for (const i of elegidos) razones.set(cand[i].sap, []);
+    efectos.forEach((e, k) => { const i = elegidos.find((j) => cubre[k][j]); if (i !== undefined) razones.get(cand[i].sap).push(e.txt); });
+    const sel = cand.filter((c) => razones.has(c.sap)).map((c) => ({ c, razones: razones.get(c.sap) }));
+    // Filtro de simetría para las combinaciones de marcos (casos 2 a 4 usan patrones X e Y)
+    const selSap = new Set(elegidos.map((i) => cand[i].sap));
+    // casos 1 y 2: sólo patrones de análisis; casos 3 y 4: sólo sentidos no espejo
+    const okNombre = (n) => {
+      if ((simX && /WXN|−X/.test(n)) || (simY && /WYN|−Y/.test(n))) return false;
+      const m = n.match(/^C[12]·(W[XY][PN]_\d+)/);
+      return m ? selSap.has(m[1]) : true;
+    };
+    const crit = {};
+    for (const m of marcosRes) {
+      const env = envolverItems([...m.cm.c1, ...m.cm.c2, ...m.cm.c3, ...m.cm.c4].filter((it) => okNombre(it.nombre)));
+      m.env = env;
+      for (const [el, o] of Object.entries(env)) {
+        const v = Math.max(o.max, -o.min);
+        if (!crit[el] || v > crit[el].v * 1.01) crit[el] = { v, ejes: [m.mc.eje] };
+        else if (v > crit[el].v * 0.99) crit[el].ejes.push(m.mc.eje);
+      }
+    }
+    // Marcos a modelar: cobertura mínima de los máximos (+ y −) de cada elemento, tolerancia 3 %
+    const efMar = [];
+    const keys = [...new Set(marcosRes.flatMap((m) => Object.keys(m.env)))];
+    for (const k of keys) for (const sg of [1, -1]) {
+      const v = marcosRes.map((m) => m.env[k] ? (sg > 0 ? m.env[k].max : -m.env[k].min) : -Infinity);
+      const mx = Math.max(...v); if (mx > tol) efMar.push({ k, sg, v, mx });
+    }
+    const cubM = efMar.map((e) => e.v.map((x) => x >= 0.97 * e.mx - tol));
+    const pendM = new Set(efMar.map((_, i) => i)), marcosSel = [];
+    while (pendM.size) {
+      let best = -1, nb = -1;
+      marcosRes.forEach((m, i) => { if (marcosSel.some((x) => x.i === i)) return; let n = 0; for (const k of pendM) if (cubM[k][i]) n++; if (n > nb || (n === nb && best >= 0 && m.mc.trib > marcosRes[best].mc.trib)) { nb = n; best = i; } });
+      if (nb <= 0) break;
+      const por = [];
+      for (const k of [...pendM]) if (cubM[k][best]) { pendM.delete(k); por.push(efMar[k]); }
+      marcosSel.push({ i: best, eje: marcosRes[best].mc.eje, por });
+    }
+    return { simX, simY, sel, descartados: r.casos.length - sel.length, marcosRes, crit, marcosSel, okNombre, nEfectos: efectos.length };
+  }
+  function envolverItems(items) {
+    const e = {};
+    const upd = (key, v, n) => { const o = e[key] || (e[key] = { max: -Infinity, min: Infinity, nmax: '', nmin: '' }); if (v > o.max) { o.max = v; o.nmax = n; } if (v < o.min) { o.min = v; o.nmin = n; } };
+    for (const it of items) { upd('colXm', it.colXm, it.nombre); upd('colXp', it.colXp, it.nombre); for (const v of it.vigas) upd('viga' + v.faldon, v.w, it.nombre); }
+    return e;
+  }
+  /** Combinaciones que gobiernan algún elemento del marco en cada caso de diseño (sin repetir), con filtro opcional. */
+  function combosGobernantes(cm, ok) {
+    const out = {};
+    const nom = { colXm: 'columna X−', colXp: 'columna X+', 'vigaX−': 'viga X−', 'vigaX+': 'viga X+', vigaU: 'viga techo' };
+    for (const k of ['c1', 'c2', 'c3', 'c4']) {
+      const items = cm[k].filter((it) => !ok || ok(it.nombre));
+      const env = envolverItems(items);
+      const names = new Map();
+      for (const [el, o] of Object.entries(env)) {
+        if (o.max > 1e-9) { const l = names.get(o.nmax) || []; l.push('máx + ' + (nom[el] || el)); names.set(o.nmax, l); }
+        if (o.min < -1e-9) { const l = names.get(o.nmin) || []; l.push('máx − ' + (nom[el] || el)); names.set(o.nmin, l); }
+      }
+      out[k] = [...names.entries()].map(([n, why]) => Object.assign({}, items.find((it) => it.nombre === n), { por: why }));
+      out[k].env = env;
+    }
+    return out;
+  }
+
   function cyrMuro(g, geo, el) {
     const th = geo.tipoTecho === 'plana' ? 0 : +geo.theta;
     const rad = th * Math.PI / 180;
@@ -1038,7 +1163,7 @@
     G_ACC, ZONAS, IMPORTANCIA, KD, EXPOSICION, TERRENO, TABLA5, TABLA4, CERRAMIENTO, TOPO,
     lerp, round, Nm2_to_kgf, Kz, Ke, Kzt, qz, clasificarCerramiento, Ri,
     CpSotavento, CpTechoBarlovento, CpTechoSotavento, CpTechoZona, zonasTecho, CpZonaPromedio,
-    GCpfA, ENV_A, ENV_B, direccional, galponSAP, anexoA, CA1, CA2, procesarCasos, parseEjes, letraEje, casosMarco, cyrMuro, GCpMuro, trazaCpTecho, redArea, simplificado, contenedor, techumbre,
+    GCpfA, ENV_A, ENV_B, direccional, galponSAP, anexoA, CA1, CA2, procesarCasos, parseEjes, letraEje, casosMarco, analisisGalpon, combosGobernantes, cyrMuro, GCpMuro, trazaCpTecho, redArea, simplificado, contenedor, techumbre,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NCh432 = api;

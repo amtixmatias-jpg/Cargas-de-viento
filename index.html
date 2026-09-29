@@ -138,7 +138,7 @@ details.fold > summary::-webkit-details-marker, details.fold2 > summary::-webkit
 details.fold > summary::before, details.fold2 > summary::before { content: "▸"; color: var(--accent); transition: transform .15s; }
 details.fold[open] > summary::before, details.fold2[open] > summary::before { transform: rotate(90deg); }
 .foldbody { margin-top: 14px; }
-details.fold, details.fold2 { min-width: 0; }
+details.fold, details.fold2, #gMarGob > div, #gMarCasos > * { min-width: 0; }
 details.fold2 { border: 1px solid var(--line); border-radius: var(--r); padding: 8px 12px; background: var(--panel2); }
 details.fold2 > summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; gap: 8px; align-items: center; }
 details.fold2[open] { background: var(--panel); }
@@ -151,7 +151,7 @@ dialog.proj { border: 1px solid var(--line); border-radius: 10px; background: va
 dialog.proj::backdrop { background: rgba(0,0,0,.45); }
 dialog.proj textarea { width: 100%; min-height: 180px; font-family: var(--font-mono); font-size: 12px; background: var(--panel2); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; }
 .combos tr { cursor: pointer; }
-.combos tr.sel td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.combos tr.sel td, #gMarRes tr.sel td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 7px 14px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
 .toast.on { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -310,19 +310,34 @@ dialog.proj textarea { width: 100%; min-height: 180px; font-family: var(--font-m
   </div>
   <div class="stats" id="gStats"></div>
   <div class="card"><h3>Planta de la estructura</h3><div id="gPlanta"></div></div>
-  <div class="card"><h3>Obtención de los coeficientes</h3><div id="gTraza"></div></div>
+  <div class="card" id="gAnaCard"><h3>Casos de análisis para SAP <span class="cl">lo que hay que modelar</span><button class="btn act" type="button" data-copy="gAnaT">Copiar tabla</button></h3>
+    <div id="gAnaRes"></div>
+    <div class="tbl"><table id="gAnaT"></table></div>
+    <h4 class="sub4" style="margin-top:16px">Combinaciones de viento de la Fig. 11 con estos estados <span class="cl">modelo 3D</span><button class="btn act" type="button" data-copy="gAnaC">Copiar tabla</button></h4>
+    <div class="tbl"><table id="gAnaC"></table></div>
+    <p class="note" id="gAnaNota"></p>
+  </div>
   <div class="card"><h3>Presiones por caso · planta y elevación
       <label class="f act" style="min-width:min(100%,360px)"><select id="gVista" aria-label="Caso a visualizar"></select></label></h3>
     <p class="note" id="gVistaDesc" style="margin-top:0"></p>
     <div style="display:grid;gap:10px"><div id="gVP"></div><div id="gVS"></div></div><div class="legend"><span><i style="background:var(--pres)"></i>presión (+), hacia la superficie</span><span><i style="background:var(--succ)"></i>succión (−), alejándose</span></div>
   </div>
+  <div class="card"><h3>Marcos a modelar <span class="cl">modelo 2D, plano XZ</span>
+      <label class="f act" style="min-width:min(100%,340px)"><select id="gMarco" aria-label="Marco"></select></label></h3>
+    <div class="tbl"><table id="gMarRes"></table></div>
+    <p class="note" id="gMarResNota"></p>
+    <h4 class="sub4" style="margin-top:14px" id="gMarGobTit"></h4>
+    <div id="gMarGob" style="display:grid;gap:12px"></div>
+  </div>
+  <details class="card fold" id="gDet"><summary>Detalle y trazabilidad · todos los patrones, combinaciones y verificaciones</summary>
+    <div class="foldbody" style="display:grid;gap:18px">
+  <div class="card"><h3>Obtención de los coeficientes</h3><div id="gTraza"></div></div>
   <div class="card"><h3>Casos más desfavorables <span class="cl">envolvente por superficie y resultantes</span><button class="btn act" type="button" data-copy="gEnv">Copiar tabla</button></h3>
     <div class="split"><div class="tbl"><table id="gEnv"></table></div><div class="tbl"><table id="gRes"></table></div></div>
   </div>
-  <details class="card fold" open><summary>Dirección X · patrones +WX y −WX</summary><div id="gDirX" class="foldbody"></div></details>
+  <details class="card fold"><summary>Dirección X · patrones +WX y −WX</summary><div id="gDirX" class="foldbody"></div></details>
   <details class="card fold"><summary>Dirección Y · patrones +WY y −WY</summary><div id="gDirY" class="foldbody"></div></details>
-  <div class="card"><h3>Cargas en marcos · 4 casos de diseño <span class="cl">Fig. 11, modelo 2D plano XZ</span>
-      <label class="f act" style="min-width:min(100%,340px)"><select id="gMarco" aria-label="Marco"></select></label></h3>
+  <div class="card"><h3>Todas las combinaciones del marco seleccionado <span class="cl">4 casos de diseño, Fig. 11</span></h3>
     <p class="note" style="margin-top:0">Envolvente por elemento (máximo positivo y negativo de cada caso de diseño, con la combinación que lo produce):</p>
     <div class="tbl"><table id="gMarEnv"></table></div>
     <div id="gMarCasos" style="margin-top:12px;display:grid;gap:8px"></div>
@@ -339,6 +354,8 @@ dialog.proj textarea { width: 100%; min-height: 180px; font-family: var(--font-m
     <div class="tbl"><table id="gPerfil"></table></div>
     <p class="note">Los patrones usan qh en toda la altura del muro de barlovento (conservador). Si modela la variación con la altura, use esta tabla.</p>
   </div>
+    </div>
+  </details>
 </section>
 
 <!-- ---------- SIMPLIFICADO ---------- -->
@@ -966,8 +983,16 @@ function llenarSelect(sel, opts, valor) {
   sel.value = ok ? valor : (opts[0] ? opts[0][0] : '');
   return sel.value;
 }
-function vistaCasos(r, geo, selId, planId, secId, descId, key) {
-  const v = llenarSelect($(selId), r.casos.map((c) => [c.sap, `${c.sap} · ${c.desc}`]), S[key]);
+function vistaCasos(r, geo, selId, planId, secId, descId, key, prefer) {
+  let v;
+  if (prefer && prefer.length) {
+    const sel = $(selId);
+    const o = (c) => `<option value="${c.sap}">${c.sap} · ${c.desc}</option>`;
+    const html = `<optgroup label="Casos de análisis">${r.casos.filter((c) => prefer.includes(c.sap)).map(o).join('')}</optgroup><optgroup label="Otros patrones">${r.casos.filter((c) => !prefer.includes(c.sap)).map(o).join('')}</optgroup>`;
+    if (sel.dataset.k !== html) { sel.innerHTML = html; sel.dataset.k = html; }
+    sel.value = r.casos.some((c) => c.sap === S[key]) ? S[key] : prefer[0];
+    v = sel.value;
+  } else v = llenarSelect($(selId), r.casos.map((c) => [c.sap, `${c.sap} · ${c.desc}`]), S[key]);
   const c = r.casos.find((x) => x.sap === v) || r.casos[0];
   $(planId).innerHTML = plantaSVG(geo, c, false);
   $(secId).innerHTML = seccionSVG(geo, r.rise, c);
@@ -978,10 +1003,56 @@ function tablaMarco(items, tipo) {
   const u = U(), una = tipo === 'una' || tipo === 'plana' && false;
   const vig = (vs, f) => vs.filter((v) => v.faldon === f || (f === 'X−' && v.faldon === 'U')).map((v) => `${Wl(v.w)}${vs.filter((x) => x.faldon === v.faldon).length > 1 ? ` <span class="sub">(${fm(v.a)}–${fm(v.b)})</span>` : ''}`).join('<br>');
   const unaA = tipo === 'una';
-  return `<thead><tr><th>Combinación</th><th class="n">Columna X− [${u.ul}]</th><th class="n">${unaA ? 'Viga techo' : 'Viga X−'} [${u.ul}]</th>${unaA ? '' : `<th class="n">Viga X+ [${u.ul}]</th>`}<th class="n">Columna X+ [${u.ul}]</th></tr></thead><tbody>` +
-    items.map((it) => `<tr><td class="mono" title="${it.desc}">${it.nombre}</td><td class="n">${Wl(it.colXm)}</td><td class="n">${vig(it.vigas, 'X−')}</td>${unaA ? '' : `<td class="n">${vig(it.vigas, 'X+')}</td>`}<td class="n">${Wl(it.colXp)}</td></tr>`).join('') + '</tbody>';
+  const por = items.some((it) => it.por);
+  return `<thead><tr><th>Combinación</th><th class="n">Columna X− [${u.ul}]</th><th class="n">${unaA ? 'Viga techo' : 'Viga X−'} [${u.ul}]</th>${unaA ? '' : `<th class="n">Viga X+ [${u.ul}]</th>`}<th class="n">Columna X+ [${u.ul}]</th>${por ? '<th>Gobierna</th>' : ''}</tr></thead><tbody>` +
+    items.map((it) => `<tr><td class="mono" title="${it.desc}">${it.nombre}${por ? `<br><span class="sub">${it.desc}</span>` : ''}</td><td class="n">${Wl(it.colXm)}</td><td class="n">${vig(it.vigas, 'X−')}</td>${unaA ? '' : `<td class="n">${vig(it.vigas, 'X+')}</td>`}<td class="n">${Wl(it.colXp)}</td>${por ? `<td>${it.por.map((t) => `<span class="pill ok">${t}</span>`).join(' ')}</td>` : ''}</tr>`).join('') + '</tbody>';
 }
 
+function resumenTecho(c, fal) {
+  const ts = c.techo.filter((t) => t.faldon === fal || t.faldon === 'todo' || (fal === 'X−' && t.faldon === 'U'));
+  if (!ts.length) return '—';
+  const v = ts.map((t) => t.p), mn = Math.min(...v), mx = Math.max(...v);
+  return Math.abs(mx - mn) < 1e-6 ? P(mn) : `${P(mn)} … ${P(mx)}`;
+}
+function renderAnalisis(r, an, geo, anexo) {
+  const u = U(), F = FU(), mm = unit === 'kgf' ? 'kgf·m' : 'kN·m';
+  const una = geo.tipoTecho === 'una';
+  const sim = [an.simX ? '−WX es espejo de +WX (techo simétrico)' : 'techo de una agua: +WX y −WX son distintos', an.simY ? '−WY es espejo de +WY (vanos simétricos en Y)' : 'vanos no simétricos en Y: +WY y −WY son distintos'];
+  $('gAnaRes').innerHTML = `<p style="margin:0 0 10px"><b style="font-size:17px">${an.sel.length} estados de viento</b> <span class="note">de ${r.casos.length} patrones calculados. ${sim.join('; ')}. Se conservan sólo los patrones necesarios para cubrir el efecto más desfavorable de cada superficie, del corte, del levantamiento y de cada elemento de los marcos (con tolerancia de 3 %).</span></p>`;
+  $('gAnaT').innerHTML = `<thead><tr><th>Estado SAP</th><th>Descripción</th><th class="n">Muro X−</th><th class="n">Muro X+</th><th class="n">Frontón Y−</th><th class="n">Frontón Y+</th>${una ? '<th class="n">Techo</th>' : '<th class="n">Faldón X−</th><th class="n">Faldón X+</th>'}<th>Gobierna</th></tr></thead><tbody>` +
+    an.sel.map(({ c, razones }) => { const m = (s_) => P(c.muros.find((x) => x.sup === s_).p);
+      return `<tr><td class="mono"><b>${c.sap}</b></td><td>${c.desc}</td><td class="n">${m('Muro X−')}</td><td class="n">${m('Muro X+')}</td><td class="n">${m('Frontón Y−')}</td><td class="n">${m('Frontón Y+')}</td>
+      ${una ? `<td class="n">${resumenTecho(c, 'X−')}</td>` : `<td class="n">${resumenTecho(c, 'X−')}</td><td class="n">${resumenTecho(c, 'X+')}</td>`}<td>${razones.map((t) => `<span class="pill ok">${t}</span>`).join(' ')}</td></tr>`; }).join('') + '</tbody>';
+  // Fig. 11 con los estados de análisis
+  const X = an.sel.filter((x) => x.c.dir === 'X').map((x) => x.c), Y = an.sel.filter((x) => x.c.dir === 'Y').map((x) => x.c);
+  const tz = Object.fromEntries(r.torsion.map((t) => [t.dir, t]));
+  const rows = [];
+  for (const c of [...X, ...Y]) rows.push(['Caso 1', c.sap, `1,0·${c.sap}_M + 1,0·${c.sap}_T`]);
+  for (const c of [...X, ...Y]) rows.push(['Caso 2', c.sap, `0,75·${c.sap}_M + 0,75·${c.sap}_T ± MZ${c.dir} (${nf(F.f(tz[c.dir] ? tz[c.dir].Mz : 0), F.d)} ${mm})`]);
+  const pares = [];
+  for (const x of X) for (const y of Y) if (anexo || Math.sign(x.gcpi) === Math.sign(y.gcpi)) pares.push([x, y]);
+  for (const [x, y] of pares) { const t = x.Fz >= y.Fz ? x : y; rows.push(['Caso 3', x.sap + ' + ' + y.sap, `0,75·${x.sap}_M + 0,75·${y.sap}_M + 1,0·${t.sap}_T`]); }
+  for (const [x, y] of pares) { const t = x.Fz >= y.Fz ? x : y; rows.push(['Caso 4', x.sap + ' + ' + y.sap, `0,563·${x.sap}_M + 0,563·${y.sap}_M + 0,75·${t.sap}_T ± MZ4 (${nf(F.f((tz.X ? tz.X.Mz4 : 0) + (tz.Y ? tz.Y.Mz4 : 0)), F.d)} ${mm})`]); }
+  $('gAnaC').innerHTML = `<thead><tr><th>Caso Fig. 11</th><th>Estados</th><th>Combinación en SAP</th></tr></thead><tbody>` + rows.map((x) => `<tr><td>${x[0]}</td><td class="mono">${x[1]}</td><td class="mono">${x[2]}</td></tr>`).join('') + '</tbody>';
+  $('gAnaNota').innerHTML = `Defina cada estado como dos <i>load patterns</i>: …_M (presiones en muros) y …_T (presiones en techo), con los valores de la tabla y de "Presiones por caso". Así se aplican los factores de la Fig. 11: caso 2 muros y techo al 75 %; caso 3 muros al 75 % y el techo del estado con mayor levantamiento al 100 %; caso 4 muros al 56,3 % y techo al 75 %. MZ es el momento torsor por la excentricidad ±0,15B (caso 4: suma de ambas direcciones); en diafragma flexible reemplácelo por el bloque de presión equivalente, como en las tablas de marcos. En los casos 3 y 4 se combinan estados con el mismo signo de GCpi.${an.simX || an.simY ? ' Por simetría, los sentidos espejo no requieren análisis adicional si la estructura también es simétrica.' : ''}`;
+}
+function renderMarcosAnalisis(r, an, geo, mi) {
+  const una = geo.tipoTecho === 'una';
+  const els = [['colXm', 'Columna X−'], ...(una ? [['vigaU', 'Viga techo']] : [['vigaX−', 'Viga X−'], ['vigaX+', 'Viga X+']]), ['colXp', 'Columna X+']];
+  const nomEl = { colXm: 'columna X−', colXp: 'columna X+', 'vigaX−': 'viga X−', 'vigaX+': 'viga X+', vigaU: 'viga techo' };
+  const selM = new Map(an.marcosSel.map((x) => [x.eje, x]));
+  const critP = (el, eje) => { const x = selM.get(eje); return x && x.por.some((e) => e.k === el) ? ' <span class="pill bad">gobierna</span>' : ''; };
+  $('gMarRes').innerHTML = `<thead><tr><th>Marco</th><th class="n">y [m]</th><th class="n">Ancho trib. [m]</th>${els.map(([, t]) => `<th class="n">${t} máx + / máx − [${U().ul}]</th>`).join('')}</tr></thead><tbody>` +
+    an.marcosRes.map((m, i) => `<tr class="${i + 1 === mi ? 'sel' : ''}"><td>Eje ${m.mc.eje}</td><td class="n">${fm(m.mc.y)}</td><td class="n">${fm(m.mc.trib)}</td>${els.map(([k]) => { const o = m.env[k]; return `<td class="n">${o ? `${o.max > 0 ? Wl(o.max) : '—'} / ${o.min < 0 ? Wl(o.min) : '—'}${critP(k, m.mc.eje)}` : ''}</td>`; }).join('')}</tr>`).join('') + '</tbody>';
+  $('gMarResNota').innerHTML = `Envolvente de los 4 casos de diseño en cada marco (sin sentidos espejo). <b>Marcos a modelar: ${an.marcosSel.map((x) => 'eje ' + x.eje + (an.simY && +x.eje !== an.marcosRes.length + 1 - +x.eje ? ` (equivale al eje ${an.marcosRes.length + 1 - +x.eje} por simetría)` : '')).join(' y ')}</b>, que en conjunto cubren el máximo positivo y negativo de cada elemento (tolerancia 3 %): ${an.marcosSel.map((x) => `eje ${x.eje} → ${x.por.map((e) => (e.sg > 0 ? 'máx + ' : 'máx − ') + nomEl[e.k]).join(', ')}`).join('; ')}. El resto de los marcos queda cubierto por estos. Elija el marco en la lista para ver sus combinaciones.`;
+  const mc = an.marcosRes[mi - 1];
+  const cg = N.combosGobernantes(mc.cm, an.okNombre);
+  const n = ['c1', 'c2', 'c3', 'c4'].reduce((a, k) => a + cg[k].length, 0);
+  $('gMarGobTit').innerHTML = `Marco eje ${mc.mc.eje}: ${n} combinaciones que gobiernan <span class="cl">de ${mc.cm.c1.length + mc.cm.c2.length + mc.cm.c3.length + mc.cm.c4.length} evaluadas</span>`;
+  const nom = { c1: 'Caso 1', c2: 'Caso 2 (0,75 + torsión)', c3: 'Caso 3 (0,75 X + 0,75 Y)', c4: 'Caso 4 (0,563 X + 0,563 Y + torsión)' };
+  $('gMarGob').innerHTML = ['c1', 'c2', 'c3', 'c4'].map((k) => `<div><div style="display:flex;align-items:baseline;gap:8px"><b>${nom[k]}</b><span class="spacer"></span><button class="btn" type="button" data-copy="gMG${k}">Copiar</button></div>
+    <div class="tbl"><table id="gMG${k}">${tablaMarco(cg[k], geo.tipoTecho)}</table></div></div>`).join('');
+}
 function renderGalpon(g) {
   const { ey, ex, geo } = geoGalpon();
   const err = ey.error || ex.error;
@@ -1007,7 +1078,10 @@ function renderGalpon(g) {
   $('gPlanta').innerHTML = plantaSVG(geo, null, true) +
     `<p class="note">Marcos transversales en los ejes numéricos (1, 2, 3…) a lo largo de Y; ejes longitudinales con letra (A = muro X−, ${N.letraEje(ex.pos.length - 1)} = muro X+). Frontón Y− en el eje 1 y frontón Y+ en el eje ${ey.pos.length}.</p>`;
   $('gTraza').innerHTML = anexo ? trazaAnexo(r, S.gTecho) : trazaHTML(r, geo);
-  vistaCasos(r, geo, 'gVista', 'gVP', 'gVS', 'gVistaDesc', 'gVista');
+  const an = N.analisisGalpon(r, geo);
+  const selS = an.sel.map((x) => x.c.sap);
+  vistaCasos(r, geo, 'gVista', 'gVP', 'gVS', 'gVistaDesc', 'gVista', selS);
+  renderAnalisis(r, an, geo, anexo);
 
   // Envolvente y resultantes
   $('gEnv').innerHTML = `<thead><tr><th>Superficie</th><th class="n">Máx. presión</th><th>Caso</th><th class="n">Máx. succión</th><th>Caso</th></tr></thead><tbody>` +
@@ -1024,9 +1098,11 @@ function renderGalpon(g) {
   $('gDirY').innerHTML = tablasDir(r, anexo, 'Y', 'gCY');
 
   // Marcos: 4 casos de diseño
-  const mi = +llenarSelect($('gMarco'), r.marcos.map((m) => [m.i, `Marco eje ${m.eje} · y = ${fm(m.y)} m · ancho tributario ${fm(m.trib)} m`]), S.gMarco);
+  const mSel = new Set(an.marcosSel.map((x) => x.eje));
+  const mi = +llenarSelect($('gMarco'), r.marcos.map((m) => [m.i, `${mSel.has(m.eje) ? '★ ' : ''}Marco eje ${m.eje} · y = ${fm(m.y)} m · ancho tributario ${fm(m.trib)} m`]), S.gMarco);
   const mc = r.marcos[mi - 1];
-  const cm = N.casosMarco(r, mc, geo.largo);
+  const cm = an.marcosRes[mi - 1].cm;
+  renderMarcosAnalisis(r, an, geo, mi);
   const nombres = { c1: 'Caso 1', c2: 'Caso 2', c3: 'Caso 3', c4: 'Caso 4' };
   const elems = [['colXm', 'Columna eje A (X−)'], ...(S.gTecho === 'una' ? [['vigaU', 'Viga de techo']] : [['vigaX−', 'Viga faldón X−'], ['vigaX+', 'Viga faldón X+']]), ['colXp', `Columna eje ${N.letraEje(ex.pos.length - 1)} (X+)`]];
   $('gMarEnv').innerHTML = `<thead><tr><th>Elemento</th>${Object.keys(nombres).map((k) => `<th class="n">${nombres[k]} · máx +</th><th class="n">${nombres[k]} · máx −</th>`).join('')}</tr></thead><tbody>` +
