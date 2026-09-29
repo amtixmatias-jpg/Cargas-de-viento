@@ -115,6 +115,7 @@ td .sub { color: var(--muted); font-size: 11.5px; margin-left: 4px; }
 .pS { color: var(--succ); }
 tr.grp td { background: var(--panel2); font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--fg); }
 .pill { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 1px 8px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap; }
+.chkitem { display: inline-flex; gap: 6px; align-items: baseline; margin-right: 14px; }
 .pill.ok { color: var(--ok); } .pill.bad { color: var(--bad); }
 
 .btn { background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r); padding: 5px 11px; cursor: pointer; font-size: 12.5px; }
@@ -155,7 +156,7 @@ svg.dia text { font-family: var(--font-mono); font-size: 11px; }
   </div>
   <nav class="tabs" role="tablist" aria-label="Módulos">
     <button role="tab" id="tab-galpon" aria-selected="true" data-tab="galpon">Galpón <small>método direccional</small></button>
-    <button role="tab" id="tab-simple" aria-selected="false" data-tab="simple">Edificio bajo <small>envolvente · provisorio</small></button>
+    <button role="tab" id="tab-simple" aria-selected="false" data-tab="simple">Edificio bajo <small>cap. 7 envolvente</small></button>
     <button role="tab" id="tab-cont" aria-selected="false" data-tab="cont">Contenedor <small>volcamiento y anclaje</small></button>
     <button role="tab" id="tab-techo" aria-selected="false" data-tab="techo">Techumbre <small>datos para cerchas</small></button>
   </nav>
@@ -273,18 +274,19 @@ svg.dia text { font-family: var(--font-mono); font-size: 11px; }
 
 <!-- ---------- GALPÓN ---------- -->
 <section id="p-galpon" role="tabpanel" aria-labelledby="tab-galpon" class="mod" style="display:grid;gap:18px">
-  <div class="intro"><h2>Galpón · método direccional</h2>
-    <p>Sistema principal resistente (SPRFV): p = qh·Kd·G·Cp − qh·Kd·(GCpi). Se generan los patrones ±WX y ±WY, cada uno combinado con las variantes de Cp de techo y con ±GCpi, listos para cargar en SAP 2000.</p></div>
+  <div class="intro"><h2 id="gTit">Galpón · método direccional</h2><p id="gIntro"></p></div>
   <div class="card">
     <h3>Geometría</h3>
     <div class="row4">
+      <label class="f" style="grid-column:span 2"><span>Método</span><select id="gMetodo"><option value="cap6">Cap. 6 · procedimiento direccional (todas las alturas)</option><option value="anexoA">Anexo A · método simplificado (h ≤ 6 m, planta &lt; 500 m²)</option></select></label>
+      <label class="chk" id="gF060Box" style="grid-column:span 2"><input type="checkbox" id="gF060"> Anexo A caso 2: usar +0,60 en muro frontal (esquema Fig. A.1) en vez de 0,7 (Tabla A.1)</label>
       <label class="f"><span>Largo (∥ cumbrera, eje Y) [m]</span><input type="number" id="gLargo" step="0.1" min="0"></label>
       <label class="f"><span>Ancho / luz (eje X) [m]</span><input type="number" id="gAncho" step="0.1" min="0"></label>
       <label class="f"><span>Altura alero [m]</span><input type="number" id="gAlero" step="0.1" min="0"></label>
       <label class="f"><span>Techo</span><select id="gTecho"><option value="dos">Dos aguas</option><option value="una">Una agua (sube hacia X+)</option><option value="plana">Plano</option></select></label>
       <label class="f"><span>Inclinación θ [°]</span><input type="number" id="gTheta" step="0.5" min="0" max="89"></label>
       <label class="f"><span>Separación de marcos [m]</span><input type="number" id="gSep" step="0.1" min="0"></label>
-      <label class="chk" style="grid-column:span 2"><input type="checkbox" id="gRed"> Reducir −1,3 por área tributaria (nota b)</label>
+      <label class="chk" id="gRedBox" style="grid-column:span 2"><input type="checkbox" id="gRed"> Reducir −1,3 por área tributaria (Fig. 4, nota b)</label>
     </div>
   </div>
   <div class="stats" id="gStats"></div>
@@ -301,12 +303,13 @@ svg.dia text { font-family: var(--font-mono); font-size: 11px; }
       <button class="btn" type="button" data-copy="gMar">Copiar tabla</button></h3>
     <div class="tbl"><table id="gMar"></table></div>
     <p class="note" id="gMarNota"></p></div>
+  <div class="card"><h3><span class="cl">6.3.5</span> Casos de carga de diseño (Fig. 11) y carga mínima (6.1.5)</h3><div id="gFig11"></div></div>
   <div class="split">
     <div class="card"><h3>Elevación de un caso</h3>
       <label class="f" style="max-width:320px"><span>Caso</span><select id="gCaso"></select></label><div id="gDia" style="margin-top:8px"></div></div>
     <div class="card"><h3>Combinaciones en SAP 2000</h3><div id="gComb" class="note"></div></div>
   </div>
-  <div class="card">
+  <div class="card" id="gPerfilCard">
     <h3><span class="cl">5.8</span> Muro de barlovento · presión en altura (Cp = 0,8, con qz)</h3>
     <div class="tbl"><table id="gPerfil"></table></div>
     <p class="note">Los patrones SAP usan qh en toda la altura del muro de barlovento (conservador). Si modela la variación con la altura, use esta tabla.</p>
@@ -315,9 +318,8 @@ svg.dia text { font-family: var(--font-mono); font-size: 11px; }
 
 <!-- ---------- SIMPLIFICADO ---------- -->
 <section id="p-simple" role="tabpanel" aria-labelledby="tab-simple" hidden style="display:grid;gap:18px">
-  <div class="intro"><h2>Edificio bajo · procedimiento de envolvente</h2>
-    <p>Procedimiento de envolvente de ASCE 7-22 cap. 28 (base de la NCh 432:2025) para edificios de baja altura: p = qh·Kd·[(GCpf) − (GCpi)], zonas 1 a 6 y de borde E de ancho 2a.</p></div>
-  <div class="card" style="border-color:var(--bad)"><p class="note" style="margin:0"><b class="warn">Este no es el método simplificado del Anexo A de la NCh 432:2025.</b> El Anexo A tiene su propia formulación, que no está en la planilla ni en el material disponible para esta herramienta. Use esta pestaña solo como referencia hasta incorporar el Anexo A.</p></div>
+  <div class="intro"><h2>Edificio bajo · procedimiento de envolvente (cap. 7)</h2>
+    <p>Edificios de baja altura (h ≤ 18 m y h ≤ menor dimensión): p = qh·Kd·[(GCpf) − (GCpi)] (Ec. 7), con los GCpf de la Fig. 12, zonas 1 a 6 y de borde E de ancho 2a. Para viviendas y sedes pequeñas también puede usar el Anexo A desde la pestaña Galpón.</p></div>
   <div class="card">
     <h3>Geometría</h3>
     <div class="row4">
@@ -337,17 +339,21 @@ svg.dia text { font-family: var(--font-mono); font-size: 11px; }
     <div class="card"><h3>Caso B <span class="cl">viento paralelo a la cumbrera</span><button class="btn act" type="button" data-copy="sB">Copiar tabla</button></h3><div class="tbl"><table id="sB"></table></div></div>
   </div>
   <div class="card"><h3>Zonas en planta</h3><div id="sDia"></div>
-    <p class="note">En el caso A, si GCpf es negativo en las zonas 2 o 2E, se aplica en una franja desde el borde igual a 0,5 × ancho perpendicular a la cumbrera o 2,5h (la menor); el resto hasta la cumbrera usa el coeficiente de la zona 3 o 3E. Verifique además los casos torsionales.</p></div>
+    <p class="note" id="sNota"></p></div>
 </section>
 
 <!-- ---------- CONTENEDOR ---------- -->
 <section id="p-cont" role="tabpanel" aria-labelledby="tab-cont" hidden style="display:grid;gap:18px">
   <div class="intro"><h2>Contenedor · análisis puntual</h2>
-    <p>Módulo tipo oficina o bodega sobre apoyos. Fuerza horizontal neta (la presión interna se anula), succión de techo con +GCpi, volcamiento, deslizamiento y tracción de anclajes.</p></div>
-  <p class="note" style="margin:0">Base: el contenedor se trata como un edificio cerrado pequeño con el método direccional (Cp de muros y de techo plano por zonas). ASCE 7-22, base de la NCh, no tiene disposiciones propias para contenedores; confirme que la NCh 432:2025 tampoco las tenga. Las verificaciones de volcamiento, deslizamiento y anclaje son de estabilidad, no de la norma de viento.</p>
+    <p>Módulo tipo oficina o bodega sobre apoyos. Fuerza horizontal neta, succión de techo, volcamiento, deslizamiento y tracción de anclajes, por el cap. 6 o por el Anexo A.</p></div>
+  <p class="note" style="margin:0">Base normativa: la NCh 432:2025 no tiene un apartado para contenedores de oficina (el 9.10 trata contenedores circulares, silos y tanques). Se tratan como edificio cerrado pequeño de techo plano, por el cap. 6 o por el Anexo A si cumple A.0. Sobre apoyos es un edificio elevado (3.10, 6.3.1.1): los apoyos reciben un coeficiente de fuerza neta de 1,3 con qz en z = hapoyo + 0,25(h − hapoyo), y las cargas de la cara inferior no se usan para reducir el volcamiento. Se exige la carga mínima de 0,25 kN/m² en muros (6.1.5). Volcamiento, deslizamiento y anclaje son verificaciones de estabilidad.</p>
+  <div class="card" id="cChkCard"><h3>Condiciones del Anexo A (A.0)</h3><div id="cChecks" style="display:flex;flex-wrap:wrap;gap:6px 4px"></div></div>
   <div class="card">
     <h3>Contenedor</h3>
     <div class="row4">
+      <label class="f" style="grid-column:span 2"><span>Método</span><select id="cMetodo"><option value="cap6">Cap. 6 · direccional (con GCpi)</option><option value="anexoA">Anexo A · simplificado (pz = p0·Kz·C)</option></select></label>
+      <label class="f"><span>Área apoyos por cara [m²]</span><input type="number" id="cAsup" step="0.05" min="0"></label>
+      <span></span>
       <label class="f"><span>Tipo</span><select id="cTipo"><option value="20">20' estándar</option><option value="40">40' estándar</option><option value="40hc">40' High Cube</option><option value="10">10'</option><option value="custom">Personalizado</option></select></label>
       <label class="f"><span>Largo [m]</span><input type="number" id="cLargo" step="0.01" min="0"></label>
       <label class="f"><span>Ancho [m]</span><input type="number" id="cAncho" step="0.01" min="0"></label>
@@ -370,11 +376,12 @@ svg.dia text { font-family: var(--font-mono); font-size: 11px; }
 <!-- ---------- TECHUMBRE ---------- -->
 <section id="p-techo" role="tabpanel" aria-labelledby="tab-techo" hidden style="display:grid;gap:18px">
   <div class="intro"><h2>Techumbre · datos para cerchas</h2>
-    <p>Entrega q, Cpi, Cp barlovento y Cp sotavento listos para tu artefacto de cerchas, que calcula p = q·(Cp − Cpi). Por eso q incluye Kd y los Cp entregados incluyen G.</p></div>
-  <p class="note" style="margin:0">Base: una cercha recibe viento de ambos faldones, por lo que se diseña como parte del SPRFV con los Cp de techo del método direccional (los mismos de la pestaña Galpón). Costaneras, planchas y fijaciones son componentes y revestimientos, con coeficientes GCp propios por área efectiva que esta herramienta aún no incluye.</p>
+    <p>Entrega q, Cpi, Cp barlovento y Cp sotavento listos para tu artefacto de cerchas, que calcula p = q·(Cp − Cpi). Cap. 6: q = qh·Kd y Cp = G·Cp. Anexo A: q = p0·Kz, Cp = C y Cpi = 0.</p></div>
+  <p class="note" style="margin:0">Base normativa: la cercha recibe viento desde más de una superficie, por lo que es parte del SPRFV (definición 3.29) y se carga con el cap. 6 (Fig. 4) o con el Anexo A si el edificio cumple A.0. Costaneras, planchas y fijaciones son componentes y revestimientos (3.7), que van por el cap. 9 con GCp según área efectiva y aún no están en esta herramienta.</p>
   <div class="card">
     <h3>Techumbre</h3>
     <div class="row4">
+      <label class="f" style="grid-column:span 2"><span>Método</span><select id="tMetodo"><option value="cap6">Cap. 6 · direccional (Fig. 4)</option><option value="anexoA">Anexo A · simplificado (Fig. A.1 / A.2)</option></select></label>
       <label class="f"><span>Luz de la cercha [m]</span><input type="number" id="tLuz" step="0.1" min="0"></label>
       <label class="f"><span>Largo edificio [m]</span><input type="number" id="tLargo" step="0.1" min="0"></label>
       <label class="f"><span>Altura alero [m]</span><input type="number" id="tAlero" step="0.1" min="0"></label>
@@ -410,10 +417,10 @@ const DEFAULTS = {
   topo: false, topoForma: 'escarpe2d', topoH: 20, topoLh: 60, topoX: 0, topoZ: 5, topoSentido: 'favor',
   ze: 0, keMetodo: 'formula', G: 0.85,
   cerr: 'cerrado', Ao: 0, Ag: 200, Aoi: 0, Agi: 800, ab80: false, Aog: 0, Vi: 0,
-  gLargo: 51.8, gAncho: 13.9, gAlero: 6.4, gTecho: 'dos', gTheta: 10, gSep: 6, gRed: false, gMarco: 2, gCaso: 'WXP_1',
+  gLargo: 51.8, gAncho: 13.9, gAlero: 6.4, gTecho: 'dos', gTheta: 10, gMetodo: 'cap6', gF060: false, gSep: 6, gRed: false, gMarco: 2, gCaso: 'WXP_1',
   sLargo: 14, sAncho: 8, sAlero: 2.6, sTecho: 'dos', sTheta: 20, sTrib: 1, sKd: true,
-  cTipo: '20', cLargo: 6.06, cAncho: 2.44, cAlto: 2.59, cNiv: 1, cApoyo: 0.3, cPeso: 2400, cMu: 0.4, cFS: 1.5, cGD: 0.9, cGW: 1.6, cAnc: 2,
-  tLuz: 10, tLargo: 30, tAlero: 3.5, tTecho: 'dos', tTheta: 15, tDir: 'normal', tX: 0,
+  cTipo: '20', cLargo: 6.06, cAncho: 2.44, cAlto: 2.59, cNiv: 1, cApoyo: 0.3, cPeso: 2400, cMetodo: 'cap6', cAsup: 0.3, cMu: 0.4, cFS: 1.5, cGD: 0.9, cGW: 1.6, cAnc: 2,
+  tMetodo: 'cap6', tLuz: 10, tLargo: 30, tAlero: 3.5, tTecho: 'dos', tTheta: 15, tDir: 'normal', tX: 0,
 };
 const CONT = { '20': [6.06, 2.44, 2.59, 2400], '40': [12.19, 2.44, 2.59, 4000], '40hc': [12.19, 2.44, 2.9, 4200], '10': [2.99, 2.44, 2.59, 1500] };
 let S = Object.assign({}, DEFAULTS), unit = 'kgf', tab = 'galpon', tSel = 0;
@@ -423,7 +430,7 @@ if (/^#(galpon|simple|cont|techo)$/.test(location.hash)) tab = location.hash.sli
 const save = () => { try { localStorage.setItem('nch432-state', JSON.stringify(S)); localStorage.setItem('nch432-unit', unit); localStorage.setItem('nch432-tab', tab); } catch (e) {} };
 
 /* ---------------- selects ---------------- */
-$('zona').innerHTML = N.ZONAS.map((z) => `<option value="${z.id}">${z.id} · ${z.des} · ${z.V} m/s</option>`).join('');
+$('zona').innerHTML = N.ZONAS.map((z) => `<option value="${z.id}">${z.id} · ${z.des} · ${z.V} m/s · p0 ${z.p0} N/m²</option>`).join('');
 $('cat').innerHTML = N.IMPORTANCIA.map((c) => `<option value="${c.cat}">Categoría ${c.cat} · T = ${c.T} años · I = ${nf(c.I, 2)}</option>`).join('');
 {
   let html = '', grp = '';
@@ -506,11 +513,14 @@ function general() {
   if (clsC === 'auto') clsC = N.clasificarCerramiento({ Ao: S.Ao, Ag: S.Ag, Aoi: S.Aoi, Agi: S.Agi, abierto80: S.ab80 });
   const C = N.CERRAMIENTO[clsC];
   const Ri = clsC === 'parcCerrado' ? N.Ri(+S.Aog, +S.Vi) : 1;
-  return { zonaObj: z, V, I: imp.I, Kd: kd.Kd, kdObj: kd, Kzt: topo.Kzt, topo, Ke, exp: S.exp, kzMetodo: S.kzMetodo, G: +S.G,
+  const p0 = S.vMan ? 0.613 * V * V : z.p0;
+  return { zonaObj: z, V, p0, cat: S.cat, topoOn: !!S.topo, I: imp.I, Kd: kd.Kd, kdObj: kd, Kzt: topo.Kzt, topo, Ke, exp: S.exp, kzMetodo: S.kzMetodo, G: +S.G,
     cerramiento: clsC, cerrObj: C, Ri, GCpi: C.GCpi * Ri };
 }
+// Parámetros para funciones que revisan condiciones (Anexo A): topo = hay efecto topográfico
+function gA(g) { return Object.assign({}, g, { topo: g.topoOn }); }
 function renderGeneral(g) {
-  $('zonaInfo').innerHTML = `Latitud ${g.zonaObj.lat} · altitud ${g.zonaObj.alt} msnm · <b>V = ${g.zonaObj.V} m/s</b>`;
+  $('zonaInfo').innerHTML = `Latitud ${g.zonaObj.lat} · altitud ${g.zonaObj.alt} msnm · <b>V = ${g.zonaObj.V} m/s</b> · p0 = ${g.zonaObj.p0} N/m² (Anexo A)`;
   $('vManBox').hidden = !S.vMan;
   $('rvV').textContent = 'V = ' + nf(g.V, 1) + ' m/s';
   $('rvI').textContent = 'I = ' + nf(g.I, 2);
@@ -641,16 +651,61 @@ function trazaHTML(r, g) {
   parts.push(`<p class="note"><b>Techo WY (paralelo a la cumbrera, todo θ):</b> h/L = ${nf(r.hLy, 3)}: ${r.zonasY.map((z) => `${fm(z.x0)}–${fm(z.x1)} m: ${nf(z.Cp, 3)}`).join(' · ')}. Caso alternativo −0,18.${S.gRed ? ` Nota b: factor ${nf(r.fbX, 2)} (WX), ${nf(r.fbY, 2)} (WY) sobre −1,3.` : ''} Para 0,5 &lt; h/L &lt; 1,0 se interpola entre ambas filas en cada posición.</p>`);
   return parts.join('');
 }
+function trazaAnexo(r) {
+  const chk = r.checks.map((c) => `<span class="chkitem"><span class="pill ${c.ok ? 'ok' : 'bad'}">${c.ok ? 'CUMPLE' : 'NO CUMPLE'}</span> <span class="note">${c.txt}</span></span>`).join(' ');
+  const tipo = S.gTecho;
+  let tabla;
+  if (tipo === 'dos') tabla = `<table><thead><tr><th>θ</th><th class="n">0°–20°</th><th class="n">30°–45°</th><th class="n">60°</th><th class="n">&gt; 60°</th></tr></thead>
+    <tbody><tr><td>C faldón barlovento</td><td class="n">−0,85</td><td class="n">0,40</td><td class="n">0,60</td><td class="n">no aplica</td></tr></tbody></table>
+    <p class="note">Tabla – Figura A.1, interpolación lineal permitida. Con θ = ${nf(r.theta, 1)}° → <b>C = ${r.CA1 === null ? 'no aplica' : nf(r.CA1, 3)}</b>. Caso 1: muro barlovento +0,70, sotavento −0,60, laterales −0,60, faldón sotavento −0,60. Caso 2 (paralelo): frontal +0,70 (Tabla A.1; el esquema de la figura indica +0,60), trasero −0,60, laterales −0,60, faldones −0,85 y −0,60 alternados.</p>`;
+  else tabla = `<table><thead><tr><th>θ</th><th class="n">0°–10°</th><th class="n">45°–60°</th><th class="n">&gt; 60°</th></tr></thead>
+    <tbody><tr><td>C presión</td><td class="n">+0,10</td><td class="n">+0,55</td><td class="n" rowspan="2">no aplica</td></tr><tr><td>C succión</td><td class="n">−0,85</td><td class="n">−0,20</td></tr></tbody></table>
+    <p class="note">Tabla – Figura A.2 (pendiente única${tipo === 'plana' ? '; el techo plano se trata con θ = 0' : ''}). Con θ = ${nf(r.theta, 1)}° → <b>C presión = ${nf(r.CA2.pres, 3)}, C succión = ${nf(r.CA2.succ, 3)}</b>. Caso 1A (viento desde el lado bajo): techo con C presión y C succión. Caso 1B (desde el lado alto): techo −0,60. Muros: barlovento +0,70, sotavento y laterales −0,60. Caso 2: techo −0,60, frontal +0,70.</p>`;
+  return `<p class="note" style="margin-top:0">Condiciones de A.0:</p><div style="display:flex;flex-wrap:wrap;gap:6px 4px;margin-bottom:10px">${chk}</div>
+    <p class="note">pz = p0·Kz = ${nf(r.p0, 0)} × ${nf(r.Kh, 3)} = <b>${nf(r.pz, 1)} N/m²</b> (z = h = ${fm(r.h)} m, altura media del techo, Nota 2).</p>
+    <div class="tbl">${tabla}</div>`;
+}
+function fig11HTML(r, anexo) {
+  const F = FU(), mm = unit === 'kgf' ? 'kgf·m' : 'kN·m';
+  const tor = r.torsion.map((t) => `<tr><td>W${t.dir}</td><td class="n">${fm(t.B)}</td><td class="n">±${fm(t.e)}</td><td class="n">${P(t.pW)} / ${P(t.pL)}</td><td class="n">${fm(t.hW)}</td>
+    <td class="n">${nf(F.f(t.Mz), F.d)}</td><td class="n">${nf(F.f(t.Mz4), F.d)}</td></tr>`).join('');
+  const m = r.minimo;
+  const pill = (ok) => `<span class="pill ${ok ? 'ok' : 'bad'}">${ok ? 'CUMPLE' : 'NO CUMPLE'}</span>`;
+  return `<div class="split"><div class="tbl"><table>
+      <thead><tr><th>Dir.</th><th class="n">B [m]</th><th class="n">e [m]</th><th class="n">pW / pL</th><th class="n">h muro [m]</th><th class="n">Mz caso 2 [${mm}]</th><th class="n">Mz caso 4 [${mm}]</th></tr></thead>
+      <tbody>${tor}</tbody></table>
+      <p class="note">Mz = 0,75 (pW + pL)·B·e por unidad de altura, multiplicado aquí por la altura media del muro expuesto. Caso 4: 0,563 en ambas direcciones simultáneas (sume ambos Mz del caso 4). Aplíquelo en diafragmas rígidos, o como bloque de presión equivalente en los muros si el diafragma es flexible (nota 4).</p></div>
+    <div><table>
+      <tr class="grp"><td colspan="2">Casos de la Fig. 11 (obligatorios según 6.3.5)</td></tr>
+      <tr><td>Caso 1</td><td>Cada patrón WX y WY por separado (100 %)</td></tr>
+      <tr><td>Caso 2</td><td>0,75·muros de cada patrón + techo 100 % + Mz (e con el signo más desfavorable)</td></tr>
+      <tr><td>Caso 3</td><td>0,75·muros WX + 0,75·muros WY simultáneos + mayor techo de los casos 1 (100 %)</td></tr>
+      <tr><td>Caso 4</td><td>0,563·muros WX + 0,563·muros WY + Mz caso 4 + mayor techo (100 %)</td></tr>
+      <tr class="grp"><td colspan="2">Carga mínima (6.1.5): 0,25 kN/m² en muros + 0,13 kN/m² en techo proyectado</td></tr>
+      <tr><td>Dirección X</td><td class="n">mín ${nf(F.f(m.X), F.d)} · máx calc ${nf(F.f(m.maxFx), F.d)} ${F.u} ${pill(m.cumpleX)}</td></tr>
+      <tr><td>Dirección Y</td><td class="n">mín ${nf(F.f(m.Y), F.d)} · máx calc ${nf(F.f(m.maxFy), F.d)} ${F.u} ${pill(m.cumpleY)}</td></tr>
+    </table>${anexo ? '<p class="note">El Anexo A no menciona la Fig. 11 ni la carga mínima; se muestran como verificación complementaria.</p>' : ''}</div></div>`;
+}
 function renderGalpon(g) {
   const geo = { largo: +S.gLargo, ancho: +S.gAncho, hAlero: +S.gAlero, tipoTecho: S.gTecho, theta: +S.gTheta, sepMarcos: +S.gSep, redArea: !!S.gRed };
-  const r = N.galponSAP(g, geo);
+  const anexo = S.gMetodo === 'anexoA';
+  const r = anexo ? N.anexoA(gA(g), geo, { frontal060: !!S.gF060 }) : N.galponSAP(g, geo);
   const d = N.direccional(g, geo);
   const u = U(), F = FU();
   $('gTheta').disabled = S.gTecho === 'plana';
-  $('gStats').innerHTML = stat('θ', nf(r.theta, 1), '°') + stat('h', fm(r.h), 'm') + stat('h cumbrera', fm(+S.gAlero + r.rise), 'm')
-    + stat('Kh', nf(r.Kh, 3)) + stat('qh', nf(u.f(r.qh), u.d), u.u) + stat('qh·Kd', nf(u.f(r.qh * g.Kd), u.d), u.u) + stat('Patrones', r.casos.length);
+  $('gF060Box').hidden = !anexo || S.gTecho !== 'dos';
+  $('gRedBox').hidden = anexo;
+  $('gPerfilCard').hidden = anexo;
+  $('gTit').textContent = anexo ? 'Galpón · Anexo A (método simplificado)' : 'Galpón · método direccional';
+  $('gIntro').textContent = anexo
+    ? 'Anexo A (normativo): pz = p0·Kz·C con Kz en z = h. I, Kzt y Ke se toman iguales a 1,0; Kd y G están incluidos en el factor de forma C; no se considera presión interna. Se generan los patrones ±WX y ±WY para SAP 2000.'
+    : 'Cap. 6 (SPRFV, todas las alturas): p = qh·Kd·G·Cp − qh·Kd·(GCpi) (Ec. 4). Se generan los patrones ±WX y ±WY, cada uno combinado con las variantes de Cp de techo (notas c y d de la Fig. 4) y con ±GCpi, listos para cargar en SAP 2000.';
+  $('gStats').innerHTML = (anexo
+    ? stat('θ', nf(r.theta, 1), '°') + stat('h', fm(r.h), 'm') + stat('p0', nf(u.f(r.p0), u.d), u.u) + stat('Kz(h)', nf(r.Kh, 3)) + stat('pz = p0·Kz', nf(u.f(r.pz), u.d), u.u)
+    : stat('θ', nf(r.theta, 1), '°') + stat('h', fm(r.h), 'm') + stat('h cumbrera', fm(+S.gAlero + r.rise), 'm')
+      + stat('Kh', nf(r.Kh, 3)) + stat('qh', nf(u.f(r.qh), u.d), u.u) + stat('qh·Kd', nf(u.f(r.qh * g.Kd), u.d), u.u)) + stat('Patrones', r.casos.length);
   $('gEjes').innerHTML = ejesSVG(r);
-  $('gTraza').innerHTML = trazaHTML(r, g);
+  $('gTraza').innerHTML = anexo ? trazaAnexo(r) : trazaHTML(r, g);
 
   // Envolvente
   $('gEnv').innerHTML = `<thead><tr><th>Superficie</th><th class="n">Máx. presión</th><th>Caso</th><th class="n">Máx. succión</th><th>Caso</th></tr></thead><tbody>` +
@@ -676,8 +731,8 @@ function renderGalpon(g) {
     rows += base.techo.map((t) => `<tr><td>${tramoTxt(t)}</td>${cs.map((c) => { const e = val(c, t); return e ? `<td class="n">${nf(e.Cp, 3)}</td><td class="n">${P(e.p)}</td>` : '<td></td><td></td>'; }).join('')}</tr>`).join('');
     return `<div class="card"><h3>${tit} <span class="cl">${sub}</span><button class="btn act" type="button" data-copy="gC${gi}">Copiar tabla</button></h3>
       <div class="tbl"><table id="gC${gi}"><thead><tr><th rowspan="2">Superficie</th>${cs.map((c) => `<th colspan="2" class="n" title="${c.desc}">${c.sap}</th>`).join('')}</tr>
-      <tr>${cs.map((c) => `<th class="n" style="text-transform:none">Cp</th><th class="n" style="text-transform:none">p ${c.gcpi >= 0 ? '+' : '−'}GCpi</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
-      <p class="note">${cs.map((c) => `<b class="mono">${c.sap}</b>: techo ${c.variante.nombre}, GCpi ${c.gcpi >= 0 ? '+' : '−'}${nf(Math.abs(c.gcpi), 2)}`).join(' · ')}. p en ${u.u}.</p></div>`;
+      <tr>${cs.map((c) => `<th class="n" style="text-transform:none">${anexo ? 'C' : 'Cp'}</th><th class="n" style="text-transform:none">p${anexo ? '' : ` ${c.gcpi >= 0 ? '+' : '−'}GCpi`}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="note">${cs.map((c) => `<b class="mono">${c.sap}</b>: ${anexo ? c.variante.nombre : `techo ${c.variante.nombre}, GCpi ${c.gcpi >= 0 ? '+' : '−'}${nf(Math.abs(c.gcpi), 2)}`}`).join(' · ')}. p en ${u.u}.</p></div>`;
   }).join('');
 
   // Marcos
@@ -710,9 +765,9 @@ function renderGalpon(g) {
 
   const nx = r.casos.filter((c) => c.dir === 'X' && c.sentido > 0).map((c) => c.sap), ny = r.casos.filter((c) => c.dir === 'Y' && c.sentido > 0).map((c) => c.sap);
   $('gComb').innerHTML = `<p style="margin-top:0">Defina en SAP un <i>load pattern</i> tipo WIND (o OTHER) por cada caso de las tablas: ${r.casos.length} en total (${nx.join(', ')} y sus equivalentes N, más ${ny.join(', ')} y sus equivalentes N).</p>
-    <p>Cada patrón entra a las combinaciones de diseño en forma independiente, por ejemplo 1,2D + 1,6W + L y 0,9D + 1,6W con W = cada patrón. En SAP puede agruparlos en una combinación <i>Envelope</i> por dirección.</p>
-    <p>La NCh 432:2025 se basa en ASCE 7-22, que además exige los casos de carga de la Fig. 27.3-8: caso 2 (75 % de un patrón con excentricidad ±15 %), caso 3 (75 % de WX + 75 % de WY simultáneos) y caso 4 (56,3 % de ambos con excentricidad). El caso 3 se arma como combinación 0,75·WX + 0,75·WY. <b>Verifique en la norma el número de figura y si la exención para edificios bajos aplica.</b></p>`;
-
+    <p>La NCh 432 entrega cargas de servicio. Cada patrón entra a las combinaciones de NCh 3171 con factor 1,6 en LRFD (1,2D + 1,6W + L, 0,9D + 1,6W) y 1,0 en ASD (Anexo C, C.4). En SAP puede agruparlos en una combinación <i>Envelope</i>.</p>
+    <p>Para los casos 3 y 4 de la Fig. 11 conviene separar cada patrón en dos: muros (…_M) y techo (…_T), porque el 75 % o el 56,3 % se aplica a los muros y el techo va al 100 % (nota 2 de la Fig. 11).</p>`;
+  $('gFig11').innerHTML = fig11HTML(r, anexo);
   $('gPerfil').innerHTML = `<thead><tr><th class="n">z [m]</th><th class="n">Kz</th><th class="n">qz [${u.u}]</th><th class="n">p +GCpi</th><th class="n">p −GCpi</th></tr></thead><tbody>` +
     d.perfil.map((f) => `<tr><td class="n">${fm(f.z)}</td><td class="n">${nf(f.Kz, 3)}</td><td class="n">${nf(u.f(f.q), u.d)}</td><td class="n">${P(f.pos)}</td><td class="n">${P(f.neg)}</td></tr>`).join('') + '</tbody>';
 }
@@ -723,8 +778,8 @@ function renderSimple(g) {
   const u = U(), trib = +S.sTrib;
   $('sTheta').disabled = S.sTecho === 'plana';
   $('sStats').innerHTML = stat('θ', nf(r.theta, 1), '°') + stat('h media', nf(r.h, 2), 'm') + stat('Kh', nf(r.Kh, 3)) + stat('qh', nf(u.f(r.qh), u.d), u.u)
-    + stat('a', nf(r.a, 2), 'm') + stat('2a (zona E)', nf(r.dosA, 2), 'm');
-  $('sChecks').innerHTML = r.checks.map((c) => `<span class="pill ${c.ok ? 'ok' : 'bad'}">${c.ok ? 'CUMPLE' : 'NO CUMPLE'}</span> <span class="note" style="margin-right:10px">${c.txt}</span>`).join('');
+    + stat('a', nf(r.a, 2), 'm') + stat('2a (zona E)', nf(r.dosA, 2), 'm') + stat('Franja zona 2', fm(r.zona2), 'm');
+  $('sChecks').innerHTML = r.checks.map((c) => `<span class="chkitem"><span class="pill ${c.ok ? 'ok' : 'bad'}">${c.ok ? 'CUMPLE' : 'NO CUMPLE'}</span> <span class="note">${c.txt}</span></span>`).join('');
   const tbl = (rows) => `<thead><tr><th>Zona</th><th>Superficie</th><th class="n">GCpf</th><th class="n">p +GCpi</th><th class="n">p −GCpi</th>${trib > 0 ? '<th class="n">w máx</th>' : ''}</tr></thead><tbody>` +
     rows.map((f) => {
       const wmax = Math.abs(f.pos) > Math.abs(f.neg) ? f.pos : f.neg;
@@ -733,6 +788,7 @@ function renderSimple(g) {
   $('sA').innerHTML = tbl(r.casoA);
   $('sB').innerHTML = tbl(r.casoB);
   $('sDia').innerHTML = planta(+S.sLargo, +S.sAncho, r.dosA);
+  $('sNota').innerHTML = `7.3.2.1: cuando GCpf es negativo en las zonas 2 y 2E, se aplica en una franja desde el borde de barlovento igual a 0,5 × ancho o 2,5 × altura de alero, la menor (<b>${fm(r.zona2)} m</b>); el resto hasta la cumbrera usa GCpf de la zona 3/3E. Cada esquina se evalúa como esquina de barlovento. Casos de torsión (Fig. 13, 7.3.2.2) no incluidos; no se exigen en edificios de un piso con h ≤ 9 m, de estructura ligera de uno o dos pisos, o de uno o dos pisos con diafragmas flexibles. Carga mínima (7.3.6): 0,25 kN/m² en muros y 0,13 kN/m² en techo proyectado.`;
 }
 function planta(Lg, An, e2) {
   const W = 520, H = 230, m = 30;
@@ -755,51 +811,58 @@ function planta(Lg, An, e2) {
 /* ---------------- CONTENEDOR ---------------- */
 function renderCont(g) {
   const c = { largo: +S.cLargo, ancho: +S.cAncho, alto: +S.cAlto, niveles: Math.max(1, Math.round(+S.cNiv)), hApoyo: +S.cApoyo, peso: +S.cPeso,
-    mu: +S.cMu, gD: +S.cGD, gW: +S.cGW, anclajesLado: Math.max(1, Math.round(+S.cAnc)) };
-  const r = N.contenedor(g, c);
+    mu: +S.cMu, gD: +S.cGD, gW: +S.cGW, anclajesLado: Math.max(1, Math.round(+S.cAnc)), metodo: S.cMetodo, Asup: +S.cAsup };
+  const r = N.contenedor(gA(g), c);
+  const anexo = r.metodo === 'anexoA';
+  $('cChkCard').hidden = !anexo;
+  $('cChecks').innerHTML = r.checksA.map((x) => `<span class="chkitem"><span class="pill ${x.ok ? 'ok' : 'bad'}">${x.ok ? 'CUMPLE' : 'NO CUMPLE'}</span> <span class="note">${x.txt}</span></span>`).join(' ');
   const u = U(), kgf = (N_) => N_ / N.G_ACC, FSmin = +S.cFS;
-  $('cStats').innerHTML = stat('Altura total h', nf(r.h, 2), 'm') + stat('Kh', nf(r.Kh, 3)) + stat('qh', nf(u.f(r.qh), u.d), u.u) + stat('Peso total', nf(kgf(r.pesoN), 0), 'kgf');
+  $('cStats').innerHTML = stat('Altura total h', nf(r.h, 2), 'm') + stat('Kh', nf(r.Kh, 3)) + stat(anexo ? 'pz = p0·Kz' : 'qh', nf(u.f(r.qh), u.d), u.u) + stat('Peso total', nf(kgf(r.pesoN), 0), 'kgf');
   const pill = (fs) => `<span class="pill ${fs >= FSmin ? 'ok' : 'bad'}">${fs >= FSmin ? 'CUMPLE' : 'NO CUMPLE'}</span>`;
   const fsTxt = (fs) => isFinite(fs) ? nf(fs, 2) : '∞';
   $('cRes').innerHTML = r.res.map((d) => `<div class="card">
     <h3>${d.dir === 'transversal' ? 'Viento sobre la cara larga' : 'Viento sobre la cara corta'} <span class="cl">B = ${nf(d.B, 2)} m · L = ${nf(d.L, 2)} m</span></h3>
     <div class="tbl"><table>
       <tr class="grp"><td colspan="2">Presiones y fuerzas</td></tr>
-      <tr><td>Cp barlovento / sotavento (L/B = ${nf(d.LB, 2)})</td><td class="n">0,80 / ${nf(d.CpLee, 2)}</td></tr>
-      <tr><td>Presión horizontal neta qh·Kd·G·(0,8 − Cp)</td><td class="n">${P(d.pNeta)} ${u.u}</td></tr>
+      <tr><td>${anexo ? 'C' : 'Cp'} barlovento / sotavento${anexo ? '' : ` (L/B = ${nf(d.LB, 2)})`}</td><td class="n">${nf(d.CpW, 2)} / ${nf(d.CpLee, 2)}</td></tr>
+      <tr><td>Presión horizontal neta ${anexo ? 'pz·(C barl − C sot)' : 'qh·Kd·G·(Cp barl − Cp sot)'}</td><td class="n">${P(d.pNeta)} ${u.u}</td></tr>
       <tr><td>Área expuesta</td><td class="n">${nf(d.Aface, 2)} m²</td></tr>
-      <tr><td>Fuerza horizontal F</td><td class="n">${nf(kgf(d.F), 0)} kgf</td></tr>
-      <tr><td>Levantamiento del techo U (+GCpi)</td><td class="n">${nf(kgf(d.U), 0)} kgf</td></tr>
-      <tr><td>Momento volcante Mo = F·${nf(d.brazoF, 2)} + M(U)</td><td class="n">${nf(kgf(d.Mo), 0)} kgf·m</td></tr>
+      <tr><td>Fuerza calculada / mínima 0,25 kN/m²</td><td class="n">${nf(kgf(d.Fcalc), 0)} / ${nf(kgf(d.Fmin), 0)} kgf</td></tr>
+      <tr><td>Fuerza horizontal F (gobierna)</td><td class="n">${nf(kgf(d.F), 0)} kgf</td></tr>
+      <tr><td>Fuerza en apoyos (1,3·qz·Kd·G·A, z = ${nf(r.zs, 2)} m)</td><td class="n">${nf(kgf(d.Fsup), 0)} kgf</td></tr>
+      <tr><td>Levantamiento del techo U ${anexo ? '(C = −0,85)' : '(+GCpi)'}</td><td class="n">${nf(kgf(d.U), 0)} kgf</td></tr>
+      <tr><td>Momento volcante Mo = F·${nf(d.brazoF, 2)} + Fap·${nf(+S.cApoyo / 2, 2)} + M(U)</td><td class="n">${nf(kgf(d.Mo), 0)} kgf·m</td></tr>
       <tr><td>Momento resistente Mr = D·L/2</td><td class="n">${nf(kgf(d.Mr), 0)} kgf·m</td></tr>
       <tr class="grp"><td colspan="2">Estabilidad (sin anclajes, FS ≥ ${nf(FSmin, 2)})</td></tr>
       <tr><td>Volcamiento Mr/Mo</td><td class="n">${fsTxt(d.FSv)} ${pill(d.FSv)}</td></tr>
-      <tr><td>Deslizamiento μ(D − U)/F</td><td class="n">${fsTxt(d.FSd)} ${pill(d.FSd)}</td></tr>
+      <tr><td>Deslizamiento μ(D − U)/(F + Fap)</td><td class="n">${fsTxt(d.FSd)} ${pill(d.FSd)}</td></tr>
       <tr><td>Levantamiento D/U</td><td class="n">${fsTxt(d.FSu)} ${pill(d.FSu)}</td></tr>
       <tr class="grp"><td colspan="2">Anclajes (${nf(c.gD, 2)}D + ${nf(c.gW, 2)}W)</td></tr>
       <tr><td>Tracción en línea de barlovento</td><td class="n">${nf(kgf(d.Tline), 0)} kgf</td></tr>
       <tr><td>Tracción por anclaje (${c.anclajesLado} por lado)</td><td class="n">${nf(kgf(d.Tanc), 0)} kgf</td></tr>
       <tr><td>Corte por anclaje (${2 * c.anclajesLado} anclajes, sin roce)</td><td class="n">${nf(kgf(d.Vanc), 0)} kgf</td></tr>
     </table></div>
-    <p class="note">Techo: zonas por distancia desde el borde de barlovento (${d.tramos.map((t) => `Cp ${nf(t.Cp, 2)} en ${nf(t.x0, 2)}–${nf(t.x1, 2)} m`).join('; ')}).</p>
+    <p class="note">${anexo ? 'Techo: Fig. A.2 con θ = 0, caso 1A en succión (C = −0,85) sobre todo el techo; sin presión interna.' : `Techo: Fig. 4, zonas por distancia desde el borde de barlovento (${d.tramos.map((t) => `Cp ${nf(t.Cp, 2)} en ${nf(t.x0, 2)}–${nf(t.x1, 2)} m`).join('; ')}), con +GCpi.`}</p>
   </div>`).join('');
 }
 
 /* ---------------- TECHUMBRE ---------------- */
 function renderTecho(g) {
-  const r = N.techumbre(g, { luz: +S.tLuz, largo: +S.tLargo, hAlero: +S.tAlero, tipoTecho: S.tTecho, theta: +S.tTheta, direccion: S.tDir, xCercha: +S.tX });
+  const r = N.techumbre(gA(g), { metodo: S.tMetodo, luz: +S.tLuz, largo: +S.tLargo, hAlero: +S.tAlero, tipoTecho: S.tTecho, theta: +S.tTheta, direccion: S.tDir, xCercha: +S.tX });
   $('tTheta').disabled = S.tTecho === 'plana';
   $('tXBox').hidden = S.tDir !== 'paralelo';
   if (tSel >= r.combos.length) tSel = 0;
-  $('tStats').innerHTML = stat('θ', nf(r.theta, 1), '°') + stat('h media', nf(r.h, 2), 'm') + stat('Kh', nf(r.Kh, 3)) + stat('h/L', nf(r.dirInfo.hL, 3))
-    + stat('q = qh·Kd', nf(r.qOut, 3), 'kPa');
+  const anexoT = r.metodo === 'anexoA';
+  $('tX').disabled = anexoT;
+  $('tStats').innerHTML = stat('θ', nf(r.theta, 1), '°') + stat('h media', nf(r.h, 2), 'm') + stat(anexoT ? 'Kz(h)' : 'Kh', nf(r.Kh, 3)) + (anexoT ? stat('p0', nf(g.p0, 0), 'N/m²') : stat('h/L', nf(r.dirInfo.hL, 3)))
+    + stat(anexoT ? 'q = p0·Kz' : 'q = qh·Kd', nf(r.qOut, 3), 'kPa');
   $('tCombos').innerHTML = `<thead><tr><th>Caso</th><th class="n">Cpi</th><th class="n">Cp barl.</th><th class="n">Cp sot.</th><th class="n">p barl. [kPa]</th><th class="n">p sot. [kPa]</th></tr></thead><tbody>` +
     r.combos.map((c, i) => `<tr data-i="${i}" class="${i === tSel ? 'sel' : ''}" tabindex="0"><td>${c.nombre}</td><td class="n">${nf(c.Cpi, 2)}</td><td class="n">${nf(c.CpW, 3)}</td><td class="n">${nf(c.CpL, 3)}</td>
       <td class="n"><span class="${cls(c.pW)}">${nf(c.pW, 3)}</span></td><td class="n"><span class="${cls(c.pL)}">${nf(c.pL, 3)}</span></td></tr>`).join('') + '</tbody>';
   const c = r.combos[tSel];
   $('tHand').innerHTML = [['Presión básica q [kPa]', nf(c.q, 3)], ['Presión interior Cpi', nf(c.Cpi, 2)], ['Cp barlovento', nf(c.CpW, 3)], ['Cp sotavento', nf(c.CpL, 3)]]
     .map(([a, b]) => `<div class="fld"><span class="lbl">${a}</span><div>${b}</div></div>`).join('') +
-    `<div class="note" style="grid-column:1/-1">Cp entregado = G·Cp (G = ${nf(g.G, 2)}); Cp de tabla: barlovento ${nf(c.CpWraw, 3)}, sotavento ${nf(c.CpLraw, 3)}.</div>`;
+    `<div class="note" style="grid-column:1/-1">${anexoT ? 'Anexo A: q = p0·Kz(h); Cp = factor de forma C (incluye Kd y G); Cpi = 0 porque el anexo no considera presión interna.' : `Cp entregado = G·Cp (G = ${nf(g.G, 2)}); Cp de tabla: barlovento ${nf(c.CpWraw, 3)}, sotavento ${nf(c.CpLraw, 3)}. q = qh·Kd.`}</div>`;
   $('tCopy').onclick = () => copy(`q=${c.q.toFixed(3)}\tCpi=${c.Cpi.toFixed(2)}\tCp barlovento=${c.CpW.toFixed(3)}\tCp sotavento=${c.CpL.toFixed(3)}`, 'Valores copiados');
   const vals = { ww: 0, lw: 0, rw: c.pW * 1000, rl: c.pL * 1000 };
   $('tDia').innerHTML = elevacion({ ancho: +S.tLuz, hAlero: +S.tAlero, rise: r.rise, tipo: S.tTecho, vals, soloTecho: true,

@@ -75,3 +75,27 @@ console.log('OK – todas las verificaciones pasaron');
   assert.ok(gu.casos.length === 16 && gu.casos.every((c) => isFinite(c.Fx + c.Fy + c.Fz)));
   console.log('OK – casos SAP');
 }
+
+// ---- Anexo A ----
+{
+  const gA = { V: 37, p0: 839, exp: 'C', kzMetodo: 'tabla', cat: 'II', cerramiento: 'cerrado', topo: false, Kd: 0.85, G: 0.85, GCpi: 0.18, I: 1, Kzt: 1, Ke: 1 };
+  near(0.613 * 37 * 37, 839, 0.5, 'p0 Tabla 1');
+  near(N.CA1(10), -0.85, 1e-12, 'A.1 θ=10'); near(N.CA1(40), 0.4, 1e-12, 'A.1 θ=40'); near(N.CA1(25), -0.225, 1e-9, 'A.1 θ=25');
+  assert.strictEqual(N.CA1(65), null);
+  near(N.CA2(5).pres, 0.1, 1e-12, 'A.2 pres'); near(N.CA2(5).succ, -0.85, 1e-12, 'A.2 succ'); near(N.CA2(50).pres, 0.55, 1e-12, 'A.2 50°');
+  const r = N.anexoA(gA, { largo: 14, ancho: 8, hAlero: 2.6, tipoTecho: 'dos', theta: 20, sepMarcos: 3 });
+  near(r.pz, 839 * 0.87, 1e-9, 'pz');
+  const c = r.casos.find((x) => x.sap === 'WXP_1');
+  near(c.muros[0].p, 0.7 * r.pz, 1e-9, 'muro barlovento A');
+  near(c.muros[1].p, -0.6 * r.pz, 1e-9, 'muro sotavento A');
+  assert.ok(r.aplica);
+  const ru = N.anexoA(gA, { largo: 14, ancho: 8, hAlero: 2.6, tipoTecho: 'plana', theta: 0, sepMarcos: 3 });
+  assert.ok(ru.casos.every((x) => isFinite(x.Fx + x.Fy + x.Fz)));
+  // techumbre Anexo A
+  const t = N.techumbre(gA, { metodo: 'anexoA', luz: 8, largo: 14, hAlero: 2.6, tipoTecho: 'dos', theta: 20, direccion: 'normal' });
+  near(t.combos[0].CpW, -0.85, 1e-12, 'techumbre A barl'); near(t.combos[0].CpL, -0.6, 1e-12, 'techumbre A sot'); assert.strictEqual(t.combos[0].Cpi, 0);
+  // contenedor Anexo A y mínimo
+  const k = N.contenedor(gA, { metodo: 'anexoA', largo: 6.06, ancho: 2.44, alto: 2.59, niveles: 1, hApoyo: 0.3, peso: 2400, mu: 0.4, gD: 0.9, gW: 1.6, anclajesLado: 2, Asup: 0.3 });
+  assert.ok(k.res.every((d) => d.F >= d.Fmin && isFinite(d.FSv)));
+  console.log('OK – Anexo A');
+}

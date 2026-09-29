@@ -15,19 +15,19 @@
 
   /* ---------- Tabla 1: zonificación y velocidad básica ---------- */
   const ZONAS = [
-    { id: 'I-A', lat: "17°29'S – 27°22'S", alt: '< 2000', V: 27, des: 'Límite Norte hasta Copiapó' },
-    { id: 'I-B', lat: "17°29'S – 27°22'S", alt: '≥ 2000', V: 30, des: 'Límite Norte hasta Copiapó' },
-    { id: 'II-A', lat: "27°22'S – 29°54'S", alt: '< 1500', V: 27, des: 'Zona Centro' },
-    { id: 'II-B', lat: "27°22'S – 29°54'S", alt: '≥ 1500', V: 35, des: 'Zona Centro' },
-    { id: 'III-A', lat: "29°54'S – 37°28'S", alt: '< 1000', V: 34, des: 'Zona Sur' },
-    { id: 'III-B', lat: "29°54'S – 37°28'S", alt: '≥ 1000', V: 35, des: 'Zona Sur' },
-    { id: 'IV-A', lat: "37°28'S – 41°28'S", alt: '< 600', V: 37, des: 'Zona Sur hasta Chiloé' },
-    { id: 'IV-B', lat: "37°28'S – 41°28'S", alt: '≥ 600', V: 40, des: 'Zona Sur hasta Chiloé' },
-    { id: 'V', lat: "41°28'S – 50°S", alt: '—', V: 40, des: 'Zona Austral' },
-    { id: 'VI', lat: "50°S – 56°32'S", alt: '—', V: 44, des: 'Zona Austral' },
-    { id: 'NC1', lat: '—', alt: '—', V: 32, des: 'Isla de Pascua' },
-    { id: 'NC2', lat: '—', alt: '—', V: 50, des: 'Juan Fernández' },
-    { id: 'NC3', lat: '—', alt: '—', V: 60, des: 'Antártica chilena' },
+    { id: 'I-A', lat: "17°29'S – 27°22'S", alt: '< 2000', V: 27, p0: 447, des: 'Límite Norte hasta Copiapó' },
+    { id: 'I-B', lat: "17°29'S – 27°22'S", alt: '≥ 2000', V: 30, p0: 552, des: 'Límite Norte hasta Copiapó' },
+    { id: 'II-A', lat: "27°22'S – 29°54'S", alt: '< 1500', V: 27, p0: 447, des: 'Zona Centro' },
+    { id: 'II-B', lat: "27°22'S – 29°54'S", alt: '≥ 1500', V: 35, p0: 751, des: 'Zona Centro' },
+    { id: 'III-A', lat: "29°54'S – 37°28'S", alt: '< 1000', V: 34, p0: 709, des: 'Zona Sur' },
+    { id: 'III-B', lat: "29°54'S – 37°28'S", alt: '≥ 1000', V: 35, p0: 751, des: 'Zona Sur' },
+    { id: 'IV-A', lat: "37°28'S – 41°28'S", alt: '< 600', V: 37, p0: 839, des: 'Zona Sur hasta Chiloé' },
+    { id: 'IV-B', lat: "37°28'S – 41°28'S", alt: '≥ 600', V: 40, p0: 981, des: 'Zona Sur hasta Chiloé' },
+    { id: 'V', lat: "41°28'S – 50°S", alt: '—', V: 40, p0: 981, des: 'Zona Austral' },
+    { id: 'VI', lat: "50°S – 56°32'S", alt: '—', V: 44, p0: 1187, des: 'Zona Austral' },
+    { id: 'NC1', lat: '—', alt: '—', V: 32, p0: 628, des: 'Isla de Pascua' },
+    { id: 'NC2', lat: '—', alt: '—', V: 50, p0: 1533, des: 'Juan Fernández' },
+    { id: 'NC3', lat: '—', alt: '—', V: 60, p0: 2207, des: 'Antártica chilena' },
   ];
 
   /* ---------- Tabla 2: factor de importancia ---------- */
@@ -70,10 +70,7 @@
     },
   };
 
-  /*
-   * Tabla 6 (α, zg, zmín). No venía en la planilla; estos parámetros reproducen
-   * exactamente la Tabla 5 (Kz = 2,41 (z/zg)^(2/α)) al redondear a 2 decimales.
-   */
+  /* Tabla 6 – Constantes de exposición al terreno (NCh 432:2025, p. 25) */
   const TERRENO = {
     B: { alpha: 7.5, zg: 1000, zmin: 10 },
     C: { alpha: 9.8, zg: 750, zmin: 5 },
@@ -480,69 +477,100 @@
               muros.push({ sup: 'Frontón Y−', Cp: sentido > 0 ? 0.8 : CpLeeY, rol: sentido > 0 ? 'barlovento' : 'sotavento' });
               muros.push({ sup: 'Frontón Y+', Cp: sentido > 0 ? CpLeeY : 0.8, rol: sentido > 0 ? 'sotavento' : 'barlovento' });
             }
-            for (const m of muros) m.p = pe(m.Cp) - pi;
-            const techo = techoTramos(dir, sentido, v).map((t) => Object.assign(t, { p: pe(t.Cp) - pi }));
+            for (const m of muros) { m.pext = pe(m.Cp); m.p = m.pext - pi; }
+            const techo = techoTramos(dir, sentido, v).map((t) => Object.assign(t, { pext: pe(t.Cp), p: pe(t.Cp) - pi }));
 
-            // Resultantes (la presión interna se anula sobre la envolvente cerrada; se usa la externa)
-            let Fx = 0, Fy = 0, Fz = 0;
-            for (const m of muros) {
-              const pext = pe(m.Cp);
-              if (m.sup === 'Muro X−') Fx += pext * Awall['Muro X−'];
-              if (m.sup === 'Muro X+') Fx -= pext * Awall['Muro X+'];
-              if (m.sup === 'Frontón Y−') Fy += pext * Agable;
-              if (m.sup === 'Frontón Y+') Fy -= pext * Agable;
-            }
-            for (const t of techo) {
-              const pext = pe(t.Cp);
-              if (t.eje === 'x') {
-                const Aplan = (t.b - t.a) * Lg;
-                Fz -= pext * Aplan; // + hacia arriba
-                const sx = t.faldon === 'X+' ? -1 : 1; // X− y techo una agua: normal exterior (−sinθ, 0, cosθ)
-                if (tipo !== 'plana') Fx += sx * pext * Aplan * Math.tan(rad);
-              } else {
-                const Aplan = (t.b - t.a) * S;
-                Fz -= pext * Aplan;
-                // en dirección Y las componentes horizontales de ambos faldones se anulan (dos aguas)
-                if (tipo === 'una') Fx += pext * Aplan * Math.tan(rad);
-              }
-            }
             const signo = sentido > 0 ? '+' : '−';
             casos.push({
               n, dir, sentido, variante: v, iv, gcpi,
               nombre: signo + 'W' + dir,
               sap: 'W' + dir + (sentido > 0 ? 'P' : 'N') + '_' + (iv * (g.GCpi > 0 ? 2 : 1) + (sg >= 0 ? 1 : 2)),
               desc: signo + 'W' + dir + ' · techo ' + v.nombre + ' · GCpi ' + (gcpi > 0 ? '+' : gcpi < 0 ? '−' : '') + Math.abs(gcpi).toFixed(2),
-              muros, techo, Fx, Fy, Fz,
+              muros, techo,
             });
           }
         });
       }
     }
 
-    // Envolvente por superficie (muros y faldones completos promediados por área)
+    const post = procesarCasos(casos, { tipo, rad, S, Lg, hAlero: geo.hAlero, rise, Awall, Agable, sepMarcos: +geo.sepMarcos });
+    return Object.assign({
+      metodo: 'cap6', theta: th, h, rise, Kh: qH.Kz, qh, hLx, hLy, CpLeeX, CpLeeY, ww, lw, zonasX, zonasY, fbX, fbY,
+      traza: slopeRoof ? trazaCpTecho(th, hLx) : null, slopeRoof, Awall, Agable, casos,
+    }, post);
+  }
+
+  /**
+   * Post-proceso común (cap. 6 y Anexo A): resultantes, envolvente, casos que gobiernan,
+   * torsión de la Fig. 11, cargas mínimas (6.1.5) y cargas por marco.
+   * Cada caso trae muros[] {sup, Cp, p, pext} y techo[] {faldon, eje, a, b, Cp, p, pext}.
+   */
+  function procesarCasos(casos, ctx) {
+    const { tipo, rad, S, Lg, Awall, Agable } = ctx;
+    const tn = Math.tan(rad);
+    for (const c of casos) {
+      let Fx = 0, Fy = 0, Fz = 0;
+      for (const m of c.muros) {
+        if (m.sup === 'Muro X−') Fx += m.pext * Awall['Muro X−'];
+        if (m.sup === 'Muro X+') Fx -= m.pext * Awall['Muro X+'];
+        if (m.sup === 'Frontón Y−') Fy += m.pext * Agable;
+        if (m.sup === 'Frontón Y+') Fy -= m.pext * Agable;
+      }
+      for (const t of c.techo) {
+        const Aplan = (t.b - t.a) * (t.eje === 'x' ? Lg : (t.faldon === 'todo' ? S : S / 2));
+        Fz -= t.pext * Aplan; // + hacia arriba
+        if (tipo === 'plana') continue;
+        if (t.eje === 'x' || tipo === 'una') Fx += (t.faldon === 'X+' ? -1 : 1) * t.pext * Aplan * tn;
+        // eje y en dos aguas: faldones X− y X+ con la misma presión, sus componentes horizontales se anulan
+      }
+      c.Fx = Fx; c.Fy = Fy; c.Fz = Fz;
+    }
+
+    // Envolvente por superficie
     const env = {};
     const upd = (sup, p, c) => {
       const e = env[sup] || (env[sup] = { sup, max: -Infinity, min: Infinity, cmax: null, cmin: null });
       if (p > e.max) { e.max = p; e.cmax = c.sap; }
       if (p < e.min) { e.min = p; e.cmin = c.sap; }
     };
-    const faldones = tipo === 'una' ? [['Techo', 0, S]] : [['Faldón X−', 0, S / 2], ['Faldón X+', S / 2, S]];
     for (const c of casos) {
       for (const m of c.muros) upd(m.sup, m.p, c);
       for (const t of c.techo) {
-        const nom = t.eje === 'y' ? (tipo === 'una' ? 'Techo' : 'Faldones X− y X+') : (t.faldon === 'U' ? 'Techo' : 'Faldón ' + t.faldon);
-        // valor máximo local de cada zona
-        if (t.eje === 'y' && tipo !== 'una') { upd('Faldón X−', t.p, c); upd('Faldón X+', t.p, c); } else upd(nom, t.p, c);
+        if (tipo === 'una') upd('Techo', t.p, c);
+        else if (t.faldon === 'todo') { upd('Faldón X−', t.p, c); upd('Faldón X+', t.p, c); }
+        else upd('Faldón ' + t.faldon, t.p, c);
       }
     }
-    const gov = (key, fn) => casos.reduce((b, c) => (fn(c) > fn(b) ? c : b), casos[0]);
+    const gov = (fn) => casos.reduce((b, c) => (fn(c) > fn(b) ? c : b), casos[0]);
     const gobiernan = {
-      FxMax: gov('Fx', (c) => c.Fx), FxMin: gov('Fx', (c) => -c.Fx), FyMax: gov('Fy', (c) => c.Fy), FyMin: gov('Fy', (c) => -c.Fy),
-      FzMax: gov('Fz', (c) => c.Fz), FzMin: gov('Fz', (c) => -c.Fz),
+      FxMax: gov((c) => c.Fx), FxMin: gov((c) => -c.Fx), FyMax: gov((c) => c.Fy), FyMin: gov((c) => -c.Fy),
+      FzMax: gov((c) => c.Fz), FzMin: gov((c) => -c.Fz),
     };
 
+    // Fig. 11, caso 2: Mz = 0,75 (pW + pL) B e, e = ±0,15 B (por unidad de altura), y total sobre la altura del muro
+    const torsion = ['X', 'Y'].map((dir) => {
+      const cs = casos.filter((c) => c.dir === dir && c.sentido > 0);
+      if (!cs.length) return null;
+      const c = cs[0];
+      const w = c.muros.find((m) => m.rol === 'barlovento'), l = c.muros.find((m) => m.rol === 'sotavento');
+      const B = dir === 'X' ? Lg : S;
+      const hW = dir === 'X' ? ctx.hAlero : ctx.hAlero + ctx.rise / 2; // altura media del muro expuesto
+      const suma = Math.abs(w.pext) + Math.abs(l.pext);
+      const e = 0.15 * B;
+      return { dir, B, e, pW: w.pext, pL: l.pext, hW, MzUnit: 0.75 * suma * B * e, Mz: 0.75 * suma * B * e * hW, Mz4: 0.563 * suma * B * e * hW };
+    }).filter(Boolean);
+
+    // 6.1.5 Cargas mínimas: 0,25 kN/m² en muros y 0,13 kN/m² en la proyección vertical del techo
+    const riseT = ctx.rise;
+    const minimo = {
+      X: 250 * Lg * ctx.hAlero + 130 * Lg * riseT,
+      Y: 250 * S * ctx.hAlero + 130 * S * riseT / 2,
+    };
+    const maxFx = Math.max(...casos.map((c) => Math.abs(c.Fx))), maxFy = Math.max(...casos.map((c) => Math.abs(c.Fy)));
+    minimo.cumpleX = maxFx >= minimo.X; minimo.cumpleY = maxFy >= minimo.Y; minimo.maxFx = maxFx; minimo.maxFy = maxFy;
+
     // Cargas en marcos transversales (plano XZ), separados sepMarcos a lo largo de Y
-    const sep = +geo.sepMarcos;
+    const sep = +ctx.sepMarcos;
     const marcos = [];
     if (sep > 0) {
       const nEsp = Math.max(1, Math.round(Lg / sep));
@@ -553,25 +581,109 @@
       }
     }
     function cargaMarco(c, mc) {
-      // w [N/m] = p × ancho tributario; en Y el Cp del techo se promedia sobre la franja tributaria
       const wm = (sup) => c.muros.find((m) => m.sup === sup).p * mc.trib;
       const res = { colXm: wm('Muro X−'), colXp: wm('Muro X+'), vigas: [] };
-      if (c.dir === 'X') {
+      const halvesM = tipo === 'una' ? [['U', 0, S]] : [['X−', 0, S / 2], ['X+', S / 2, S]];
+      if (c.techo.every((t) => t.eje === 'x')) {
         for (const t of c.techo) res.vigas.push({ faldon: t.faldon, a: t.a, b: t.b, w: t.p * mc.trib });
       } else {
-        let s = 0;
-        for (const t of c.techo) { const lo = Math.max(t.a, mc.a), hi = Math.min(t.b, mc.b); if (hi > lo) s += t.p * (hi - lo); }
-        const halvesM = tipo === 'una' ? [['U', 0, S]] : [['X−', 0, S / 2], ['X+', S / 2, S]];
-        for (const [f, a, b] of halvesM) res.vigas.push({ faldon: f, a, b, w: s });
+        // presión variable a lo largo de y: se integra sobre la franja tributaria del marco, por faldón
+        for (const [f, a, b] of halvesM) {
+          let s = 0;
+          for (const t of c.techo) {
+            if (!(t.faldon === 'todo' || t.faldon === f || (f === 'U'))) continue;
+            const lo = Math.max(t.a, mc.a), hi = Math.min(t.b, mc.b);
+            if (hi > lo) s += t.p * (hi - lo);
+          }
+          res.vigas.push({ faldon: f, a, b, w: s });
+        }
       }
       return res;
     }
+    return { env: Object.values(env), gobiernan, torsion, minimo, marcos, cargaMarco };
+  }
 
-    return {
-      theta: th, h, rise, Kh: qH.Kz, qh, hLx, hLy, CpLeeX, CpLeeY, ww, lw, zonasX, zonasY, fbX, fbY,
-      traza: slopeRoof ? trazaCpTecho(th, hLx) : null, slopeRoof,
-      Awall, Agable, casos, env: Object.values(env), gobiernan, marcos, cargaMarco,
+  /* ================= Anexo A: método simplificado para el SPRFV ================= */
+  // Tabla – Figura A.1 (dos aguas): C del faldón a barlovento según θ (sólo un valor)
+  function CA1(th) {
+    if (th > 60) return null;
+    return lerp(th, [0, 20, 30, 45, 60], [-0.85, -0.85, 0.4, 0.4, 0.6]);
+  }
+  // Tabla – Figura A.2 (pendiente única): C presión y C succión del techo a barlovento
+  function CA2(th) {
+    if (th > 60) return null;
+    return { pres: lerp(th, [0, 10, 45, 60], [0.1, 0.1, 0.55, 0.55]), succ: lerp(th, [0, 10, 45, 60], [-0.85, -0.85, -0.2, -0.2]) };
+  }
+
+  /**
+   * Anexo A: pz = p0 · Kz · C, con Kz en z = h (Tabla 5). I, Kzt, Ke = 1; Kd y G incluidos en C; sin GCpi.
+   * Techo plano: se trata como pendiente única con θ = 0 (Figura A.2).
+   * geo = { largo, ancho, hAlero, tipoTecho, theta, sepMarcos }, g = { V, p0, exp, kzMetodo, cat, cerramiento, topo }
+   */
+  function anexoA(g, geo, opt) {
+    const tipo = geo.tipoTecho;
+    const th = tipo === 'plana' ? 0 : +geo.theta;
+    const rad = th * Math.PI / 180;
+    const S = geo.ancho, Lg = geo.largo;
+    const rise = tipo === 'dos' ? (S / 2) * Math.tan(rad) : tipo === 'una' ? S * Math.tan(rad) : 0;
+    const h = geo.hAlero + rise / 2; // Nota 2: altura media del techo
+    const kz = Kz(h, g.exp, g.kzMetodo);
+    const p0 = g.p0;
+    const pz = p0 * kz;
+    const frontal = opt && opt.frontal060 ? 0.6 : 0.7; // Tabla A.1: 0,7; esquema caso 2 de la Fig. A.1: +0,60
+    const checks = [
+      { ok: g.cat === 'I' || g.cat === 'II', txt: 'Categoría de ocupación I o II' },
+      { ok: g.cerramiento === 'cerrado', txt: 'Construcción cerrada' },
+      { ok: geo.hAlero + rise <= 6.0, txt: 'Altura ≤ 6,0 m (' + round(geo.hAlero + rise, 2) + ' m)' },
+      { ok: S * Lg < 500, txt: 'Planta < 500 m² (' + round(S * Lg, 1) + ' m²)' },
+      { ok: th <= 60, txt: 'θ ≤ 60°' },
+      { ok: !g.topo, txt: 'Sin efectos topográficos (Nota 2)' },
+    ];
+    const casos = [];
+    const halves = tipo === 'dos' ? [['X−', 0, S / 2], ['X+', S / 2, S]] : [['U', 0, S]];
+    const push = (dir, sentido, idx, nombre, muroCp, techo) => {
+      const muros = [
+        { sup: 'Muro X−', Cp: muroCp['X−'], rol: dir === 'X' ? (sentido > 0 ? 'barlovento' : 'sotavento') : 'lateral' },
+        { sup: 'Muro X+', Cp: muroCp['X+'], rol: dir === 'X' ? (sentido > 0 ? 'sotavento' : 'barlovento') : 'lateral' },
+        { sup: 'Frontón Y−', Cp: muroCp['Y−'], rol: dir === 'Y' ? (sentido > 0 ? 'barlovento' : 'sotavento') : 'lateral' },
+        { sup: 'Frontón Y+', Cp: muroCp['Y+'], rol: dir === 'Y' ? (sentido > 0 ? 'sotavento' : 'barlovento') : 'lateral' },
+      ].map((m) => Object.assign(m, { pext: pz * m.Cp, p: pz * m.Cp }));
+      const t = techo.map((x) => Object.assign(x, { eje: 'x', pext: pz * x.Cp, p: pz * x.Cp }));
+      const signo = sentido > 0 ? '+' : '−';
+      casos.push({ n: casos.length + 1, dir, sentido, variante: { nombre }, gcpi: 0, nombre: signo + 'W' + dir,
+        sap: 'W' + dir + (sentido > 0 ? 'P' : 'N') + '_' + idx, desc: signo + 'W' + dir + ' · ' + nombre, muros, techo: t });
     };
+    const wallsX = (s) => ({ 'X−': s > 0 ? 0.7 : -0.6, 'X+': s > 0 ? -0.6 : 0.7, 'Y−': -0.6, 'Y+': -0.6 });
+    const wallsY = (s) => ({ 'X−': -0.6, 'X+': -0.6, 'Y−': s > 0 ? frontal : -0.6, 'Y+': s > 0 ? -0.6 : frontal });
+    if (tipo === 'dos') {
+      const cw = CA1(th);
+      for (const s of [1, -1]) {
+        push('X', s, 1, 'caso 1: faldón barlovento C = ' + (cw === null ? '—' : cw.toFixed(2)), wallsX(s), [
+          { faldon: 'X−', a: 0, b: S / 2, Cp: s > 0 ? cw : -0.6 }, { faldon: 'X+', a: S / 2, b: S, Cp: s > 0 ? -0.6 : cw }]);
+      }
+      for (const s of [1, -1]) {
+        push('Y', s, 1, 'caso 2: −0,85 en X− / −0,60 en X+', wallsY(s), [
+          { faldon: 'X−', a: 0, b: S / 2, Cp: -0.85 }, { faldon: 'X+', a: S / 2, b: S, Cp: -0.6 }]);
+        push('Y', s, 2, 'caso 2: −0,60 en X− / −0,85 en X+', wallsY(s), [
+          { faldon: 'X−', a: 0, b: S / 2, Cp: -0.6 }, { faldon: 'X+', a: S / 2, b: S, Cp: -0.85 }]);
+      }
+    } else {
+      // pendiente única (y plano): el techo sube hacia X+; +WX = viento desde el lado bajo (caso 1A)
+      const c2 = CA2(th);
+      push('X', 1, 1, 'caso 1A: techo en presión C = ' + c2.pres.toFixed(2), wallsX(1), [{ faldon: 'U', a: 0, b: S, Cp: c2.pres }]);
+      push('X', 1, 2, 'caso 1A: techo en succión C = ' + c2.succ.toFixed(2), wallsX(1), [{ faldon: 'U', a: 0, b: S, Cp: c2.succ }]);
+      push('X', -1, 1, 'caso 1B: techo −0,60', wallsX(-1), [{ faldon: 'U', a: 0, b: S, Cp: -0.6 }]);
+      if (tipo === 'plana') {
+        // en techo plano el caso 1A aplica en ambos sentidos
+        push('X', -1, 2, 'caso 1A (plano): techo en succión C = ' + c2.succ.toFixed(2), wallsX(-1), [{ faldon: 'U', a: 0, b: S, Cp: c2.succ }]);
+        push('X', -1, 3, 'caso 1A (plano): techo en presión C = ' + c2.pres.toFixed(2), wallsX(-1), [{ faldon: 'U', a: 0, b: S, Cp: c2.pres }]);
+      }
+      for (const s of [1, -1]) push('Y', s, 1, 'caso 2: techo −0,60', wallsY(s), [{ faldon: 'U', a: 0, b: S, Cp: -0.6 }]);
+    }
+    const Awall = { 'Muro X−': Lg * geo.hAlero, 'Muro X+': Lg * (geo.hAlero + (tipo === 'una' ? rise : 0)) };
+    const Agable = S * geo.hAlero + S * rise / 2;
+    const post = procesarCasos(casos, { tipo: tipo === 'plana' ? 'una' : tipo, rad, S, Lg, hAlero: geo.hAlero, rise, Awall, Agable, sepMarcos: +geo.sepMarcos });
+    return Object.assign({ metodo: 'anexoA', theta: th, h, rise, Kh: kz, p0, pz, qh: pz, checks, aplica: checks.every((c) => c.ok), casos, CA1: CA1(th), CA2: CA2(th), Awall, Agable }, post);
   }
 
   /* ================= Método simplificado (edificios bajos, envolvente) ================= */
@@ -606,6 +718,8 @@
     const Kd = opt && opt.sinKd ? 1 : g.Kd;
     let a = Math.min(0.1 * menor, 0.4 * h);
     a = Math.max(a, 0.04 * menor, 0.9);
+    // Excepción (Fig. 12): θ = 0 a 7° y menor dimensión > 90 m → a ≤ 0,8h
+    if (th <= 7 && menor > 90) a = Math.min(a, 0.8 * h);
     const checks = [
       { ok: h <= 18, txt: 'h = ' + round(h, 2) + ' m ≤ 18 m' },
       { ok: h <= menor, txt: 'h ≤ menor dimensión horizontal (' + round(menor, 2) + ' m)' },
@@ -617,49 +731,74 @@
     });
     const A = ['1', '2', '3', '4', '1E', '2E', '3E', '4E'].map((z) => fila(z, GCpfA(z, th), 'A'));
     const Bc = ['1', '2', '3', '4', '5', '6', '1E', '2E', '3E', '4E', '5E', '6E'].map((z) => fila(z, ENV_B[z], 'B'));
-    return { theta: th, h, rise, a, dosA: 2 * a, Kh: qH.Kz, qh, Kd, casoA: A, casoB: Bc, checks };
+    const zona2 = Math.min(0.5 * geo.ancho, 2.5 * geo.hAlero); // 7.3.2.1: franja de zona 2/2E si GCpf < 0
+    return { theta: th, h, rise, a, dosA: 2 * a, zona2, Kh: qH.Kz, qh, Kd, casoA: A, casoB: Bc, checks };
   }
 
   /* ================= Contenedor (volcamiento, deslizamiento, anclaje) ================= */
+  /**
+   * Contenedor tipo oficina/bodega: edificio cerrado pequeño de techo plano.
+   * c.metodo = 'cap6' (p = q·Kd·G·Cp − qh·Kd·GCpi) o 'anexoA' (pz = p0·Kz·C, sin presión interna).
+   * Sobre apoyos: §6.3.1.1 (edificio elevado). Las cargas en la cara inferior no se usan para reducir el volcamiento;
+   * los apoyos reciben F = qz·Kd·G·1,3·A con z = hApoyo + 0,25 (h − hApoyo) (§6.3.1.1.2).
+   * Carga mínima: 0,25 kN/m² sobre el área de muro (§6.1.5).
+   */
   function contenedor(g, c) {
     const H = c.alto * c.niveles;
-    const h = c.hApoyo + H; // techo plano: h = altura del techo
-    const qH = qz(g, h);
-    const qh = qH.q;
+    const h = c.hApoyo + H;
+    const anexo = c.metodo === 'anexoA';
+    const kz = Kz(h, g.exp, g.kzMetodo);
+    const qh = anexo ? g.p0 * kz : qz(g, h).q;
     const Kd = g.Kd, G = g.G, GCpi = g.GCpi;
     const pesoN = c.peso * c.niveles * G_ACC;
+    const zs = c.hApoyo + 0.25 * (h - c.hApoyo);
+    const qs = qz(g, zs).q;
     const res = [];
     for (const dir of ['transversal', 'longitudinal']) {
-      const B = dir === 'transversal' ? c.largo : c.ancho; // cara expuesta
-      const L = dir === 'transversal' ? c.ancho : c.largo; // profundidad (brazo de volcamiento)
+      const B = dir === 'transversal' ? c.largo : c.ancho;
+      const L = dir === 'transversal' ? c.ancho : c.largo;
       const hL = h / L, LB = L / B;
-      const CpLee = CpSotavento(LB);
-      const pNeta = qh * Kd * G * (0.8 - CpLee); // presión interna se anula
+      const CpLee = anexo ? -0.6 : CpSotavento(LB);
+      const CpW = anexo ? 0.7 : 0.8;
+      const pNeta = anexo ? qh * (CpW - CpLee) : qh * Kd * G * (CpW - CpLee);
       const Aface = B * H;
-      const F = pNeta * Aface;
+      const Fcalc = pNeta * Aface;
+      const Fmin = 250 * Aface;
+      const F = Math.max(Fcalc, Fmin);
       const brazoF = c.hApoyo + H / 2;
-      // Levantamiento del techo con +GCpi (más desfavorable)
-      const tramos = zonasTecho(L, h, hL);
-      let U = 0, MU = 0;
-      for (const t of tramos) {
-        const pz = qh * Kd * (G * t.Cp - GCpi); // negativa = succión
-        const w = (t.x1 - t.x0) * B;
-        const up = -pz * w; // positivo hacia arriba
-        U += up;
-        MU += up * (L - (t.x0 + t.x1) / 2); // brazo respecto al borde de sotavento
+      const Fsup = c.hApoyo > 0 ? qs * Kd * G * 1.3 * (+c.Asup || 0) : 0;
+      const brazoSup = c.hApoyo / 2;
+      let tramos, U = 0, MU = 0;
+      if (anexo) {
+        tramos = [{ x0: 0, x1: L, Cp: -0.85 }]; // Fig. A.2, θ = 0: caso 1A en succión
+        for (const t of tramos) { const up = -qh * t.Cp * (t.x1 - t.x0) * B; U += up; MU += up * (L - (t.x0 + t.x1) / 2); }
+      } else {
+        tramos = zonasTecho(L, h, hL);
+        for (const t of tramos) {
+          const pz_ = qh * Kd * (G * t.Cp - GCpi);
+          const up = -pz_ * (t.x1 - t.x0) * B;
+          U += up; MU += up * (L - (t.x0 + t.x1) / 2);
+        }
       }
-      const Mo = F * brazoF + MU;
+      const Mo = F * brazoF + Fsup * brazoSup + MU;
       const Mr = pesoN * L / 2;
+      const Ft = F + Fsup;
       const FSv = Mo > 0 ? Mr / Mo : Infinity;
-      const FSd = F > 0 ? (c.mu * Math.max(0, pesoN - U)) / F : Infinity;
+      const FSd = Ft > 0 ? (c.mu * Math.max(0, pesoN - U)) / Ft : Infinity;
       const FSu = U > 0 ? pesoN / U : Infinity;
-      // Anclaje (combinación γD·D + γW·W)
-      const Tline = Math.max(0, (c.gW * Mo - c.gD * Mr) / L); // tracción en línea de barlovento
+      const Tline = Math.max(0, (c.gW * Mo - c.gD * Mr) / L);
       const Tanc = Tline / c.anclajesLado;
-      const Vanc = (c.gW * F) / (2 * c.anclajesLado);
-      res.push({ dir, B, L, hL, LB, CpLee, pNeta, Aface, F, brazoF, U, MU, Mo, Mr, FSv, FSd, FSu, Tline, Tanc, Vanc, tramos });
+      const Vanc = (c.gW * Ft) / (2 * c.anclajesLado);
+      res.push({ dir, B, L, hL, LB, CpW, CpLee, pNeta, Aface, Fcalc, Fmin, F, Fsup, brazoF, U, MU, Mo, Mr, FSv, FSd, FSu, Tline, Tanc, Vanc, tramos });
     }
-    return { H, h, Kh: qH.Kz, qh, pesoN, res };
+    const checksA = [
+      { ok: g.cat === 'I' || g.cat === 'II', txt: 'Categoría I o II' },
+      { ok: g.cerramiento === 'cerrado', txt: 'Cerrado' },
+      { ok: h <= 6, txt: 'Altura ≤ 6,0 m' },
+      { ok: c.largo * c.ancho < 500, txt: 'Planta < 500 m²' },
+      { ok: !g.topo, txt: 'Sin efectos topográficos' },
+    ];
+    return { H, h, Kh: kz, qh, zs, qs, pesoN, res, metodo: anexo ? 'anexoA' : 'cap6', checksA };
   }
 
   /* ================= Techumbre específica (para artefacto de cerchas) ================= */
@@ -668,6 +807,7 @@
    * q entregado = qh·Kd (kPa) y Cp entregado = G·Cp, de modo que p = q·(Cp − Cpi).
    */
   function techumbre(g, t) {
+    if (t.metodo === 'anexoA') return techumbreAnexoA(g, t);
     const th = t.tipoTecho === 'plana' ? 0 : +t.theta;
     const rad = th * Math.PI / 180;
     const rise = t.tipoTecho === 'dos' ? (t.luz / 2) * Math.tan(rad) : t.tipoTecho === 'una' ? t.luz * Math.tan(rad) : 0;
@@ -714,11 +854,42 @@
     return { theta: th, h, rise, Kh: qH.Kz, qh, qOut, dirInfo, combos };
   }
 
+  /** Techumbre por Anexo A: q = p0·Kz(h) (kPa), Cp = C, Cpi = 0 (el anexo no usa presión interna). */
+  function techumbreAnexoA(g, t) {
+    const tipo = t.tipoTecho;
+    const th = tipo === 'plana' ? 0 : +t.theta;
+    const rad = th * Math.PI / 180;
+    const rise = tipo === 'dos' ? (t.luz / 2) * Math.tan(rad) : tipo === 'una' ? t.luz * Math.tan(rad) : 0;
+    const h = t.hAlero + rise / 2;
+    const kz = Kz(h, g.exp, g.kzMetodo);
+    const qOut = g.p0 * kz / 1000;
+    const sets = [];
+    if (tipo === 'dos') {
+      const cw = CA1(th);
+      if (t.direccion === 'normal') sets.push({ nombre: 'Caso 1 (perpendicular)', ww: cw, lw: -0.6 });
+      else {
+        sets.push({ nombre: 'Caso 2: −0,85 / −0,60', ww: -0.85, lw: -0.6 });
+        sets.push({ nombre: 'Caso 2: −0,60 / −0,85', ww: -0.6, lw: -0.85 });
+      }
+    } else {
+      const c2 = CA2(th);
+      if (t.direccion === 'normal') {
+        sets.push({ nombre: 'Caso 1A presión (viento desde lado bajo)', ww: c2.pres, lw: c2.pres });
+        sets.push({ nombre: 'Caso 1A succión (viento desde lado bajo)', ww: c2.succ, lw: c2.succ });
+        if (tipo === 'una') sets.push({ nombre: 'Caso 1B (viento desde lado alto)', ww: -0.6, lw: -0.6 });
+      } else sets.push({ nombre: 'Caso 2 (paralelo)', ww: -0.6, lw: -0.6 });
+    }
+    const combos = sets.filter((x) => x.ww !== null).map((x) => ({
+      nombre: x.nombre, q: qOut, Cpi: 0, CpW: x.ww, CpL: x.lw, CpWraw: x.ww, CpLraw: x.lw, pW: qOut * x.ww, pL: qOut * x.lw,
+    }));
+    return { metodo: 'anexoA', theta: th, h, rise, Kh: kz, qh: g.p0 * kz, qOut, dirInfo: { L: t.direccion === 'normal' ? t.luz : t.largo, hL: h / (t.direccion === 'normal' ? t.luz : t.largo) }, combos };
+  }
+
   const api = {
     G_ACC, ZONAS, IMPORTANCIA, KD, EXPOSICION, TERRENO, TABLA5, TABLA4, CERRAMIENTO, TOPO,
     lerp, round, Nm2_to_kgf, Kz, Ke, Kzt, qz, clasificarCerramiento, Ri,
     CpSotavento, CpTechoBarlovento, CpTechoSotavento, CpTechoZona, zonasTecho, CpZonaPromedio,
-    GCpfA, ENV_A, ENV_B, direccional, galponSAP, trazaCpTecho, redArea, simplificado, contenedor, techumbre,
+    GCpfA, ENV_A, ENV_B, direccional, galponSAP, anexoA, CA1, CA2, procesarCasos, trazaCpTecho, redArea, simplificado, contenedor, techumbre,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NCh432 = api;
