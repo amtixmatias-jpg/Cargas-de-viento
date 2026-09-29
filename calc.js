@@ -727,7 +727,8 @@
    *     en algún marco (caso 1).
    *  Para los casos 2 a 4 de la Fig. 11 se reportan, por marco, sólo las combinaciones que gobiernan algún elemento.
    */
-  function analisisGalpon(r, geo) {
+  function analisisGalpon(r, geo, opt) {
+    const diaf = !!(opt && opt.diafragma); // casos 2 a 4 de la Fig. 11 sólo con diafragma / 2 o más niveles
     const tol = 1e-6;
     const simX = geo.tipoTecho !== 'una';
     const pos = geo.ejesY || [0, geo.largo];
@@ -831,7 +832,7 @@
     };
     const crit = {};
     for (const m of marcosRes) {
-      const env = envolverItems([...m.cm.c1, ...m.cm.c2, ...m.cm.c3, ...m.cm.c4].filter((it) => okNombre(it.nombre)));
+      const env = envolverItems((diaf ? [...m.cm.c1, ...m.cm.c2, ...m.cm.c3, ...m.cm.c4] : m.cm.c1).filter((it) => okNombre(it.nombre)));
       m.env = env;
       for (const [el, o] of Object.entries(env)) {
         const v = Math.max(o.max, -o.min);
@@ -856,7 +857,7 @@
       for (const k of [...pendM]) if (cubM[k][best]) { pendM.delete(k); por.push(efMar[k]); }
       marcosSel.push({ i: best, eje: marcosRes[best].mc.eje, por });
     }
-    return { simX, simY, sel, descartados: r.casos.length - sel.length, marcosRes, crit, marcosSel, okNombre, nEfectos: efectos.length };
+    return { diaf, simX, simY, sel, descartados: r.casos.length - sel.length, marcosRes, crit, marcosSel, okNombre, nEfectos: efectos.length };
   }
   function envolverItems(items) {
     const e = {};
