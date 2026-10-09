@@ -668,7 +668,7 @@ function fichaHTML() {
   if (tab === 'galpon') {
     const c = $('gVista').value;
     p1 = `<h2>Bases de cálculo</h2>${fichaBases(g)}
-      <h2>Geometría y criterio</h2><p>${$('gEjesInfo').innerHTML.replace(/ Escriba separaciones[^.]*\.[^.]*\./, '')}</p><p>Método: ${$('gTit').textContent}. ${$('gIntro').textContent}</p>${fichaStats('gStats')}
+      <h2>Geometría y criterio</h2><p>${$('gEjesInfo').innerHTML.replace(/\s*Escriba separaciones[\s\S]*$/, '')}</p><p>Método: ${$('gTit').textContent}. ${$('gIntro').textContent}</p>${fichaStats('gStats')}
       <h2>Coeficientes</h2>${fichaClonar('gTraza', '.tbl + .tbl, .tbl:nth-of-type(n+2)')}
       <h2>Estados de análisis</h2><p class="note">${$('gAnaRes').textContent}</p>${fichaClonar('gAnaT', 'th:last-child, td:last-child')}`;
     p2 = `<h2>Disposición de cargas · estado ${c}</h2><p class="note">${$('gVistaDesc').textContent}</p><div class="fig">${$('gVP').innerHTML}${$('gVS').innerHTML}${leyFicha}</div>
