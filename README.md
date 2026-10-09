@@ -8,6 +8,7 @@ Herramienta web para aplicar la norma chilena de viento **NCh 432 Of2025**, con 
 
 - **Guardar proyecto** descarga un `.json` con todos los datos; **Abrir proyecto** lo vuelve a cargar en cualquier computador.
 - El navegador además recuerda los últimos datos usados en ese equipo.
+- **Ficha de reporte**: botón en la barra superior; genera una ficha de 2 hojas A4 de la pestaña activa (bases de cálculo, criterios, coeficientes, resultados y figura de cargas). Imprimir / guardar PDF, o descargar la ficha .html. Ejemplo: `dist/ejemplo_ficha_galpon.pdf`.
 - Para regenerar el archivo después de modificar el código: `node build.js`.
 
 Para desarrollo: `index.html` + `calc.js` (motor de cálculo).

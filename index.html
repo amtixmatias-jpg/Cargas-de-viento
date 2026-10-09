@@ -151,6 +151,7 @@ details.fold2[open] { background: var(--panel); }
 h4.sub4 { font-family: var(--font-display); font-size: 15px; margin: 0 0 8px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
 h4.sub4 .cl { font-family: var(--font-mono); font-size: 11.5px; color: var(--accent); font-weight: 400; }
 h4.sub4 .act { margin-left: auto; }
+dialog.proj.ficha { width: min(1000px, calc(100vw - 24px)); }
 dialog.proj { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--fg); padding: 18px; width: min(640px, calc(100vw - 32px)); }
 dialog.proj::backdrop { background: rgba(0,0,0,.45); }
 dialog.proj textarea { width: 100%; min-height: 180px; font-family: var(--font-mono); font-size: 12px; background: var(--panel2); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; }
@@ -172,6 +173,7 @@ dialog.proj textarea { width: 100%; min-height: 180px; font-family: var(--font-m
     <div class="spacer"></div>
     <button class="btn" type="button" id="bGuardar">Guardar proyecto</button>
     <button class="btn" type="button" id="bAbrir">Abrir proyecto</button>
+    <button class="btn pri" type="button" id="bFicha">Ficha de reporte</button>
     <div class="seg" role="group" aria-label="Unidades">
       <button type="button" id="uKgf" aria-pressed="true">kgf/m²</button>
       <button type="button" id="uKN" aria-pressed="false">kN/m²</button>
@@ -491,6 +493,16 @@ dialog.proj textarea { width: 100%; min-height: 180px; font-family: var(--font-m
 </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<dialog class="proj ficha" id="dFicha">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+    <h3 style="margin:0">Ficha de reporte</h3><span class="note" id="dFichaTxt"></span>
+    <span class="spacer"></span>
+    <button class="btn pri" type="button" id="dFImprimir">Imprimir / guardar PDF</button>
+    <button class="btn" type="button" id="dFDescargar">Descargar ficha (.html)</button>
+    <button class="btn" type="button" id="dFCerrar">Cerrar</button>
+  </div>
+  <iframe id="dFichaFrame" title="Vista previa de la ficha" style="width:100%;height:min(75vh,900px);border:1px solid var(--line);border-radius:6px;background:#fff"></iframe>
+</dialog>
 <dialog class="proj" id="dProj">
   <h3 id="dTit" style="margin:0 0 8px"></h3>
   <p class="note" id="dTxt"></p>
@@ -579,6 +591,135 @@ document.querySelectorAll('nav.tabs button').forEach((b) => b.onclick = () => se
 
 $('reset').onclick = () => { S = Object.assign({}, DEFAULTS); tSel = 0; toUI(); save(); render(); toast('Ejemplo restablecido'); };
 
+/* ---------------- ficha de reporte (2 planas A4) ---------------- */
+const FICHA_CSS = `@page { size: A4; margin: 12mm 12mm 12mm 12mm; }
+:root { --bg:#fff; --panel:#fff; --panel2:#f3f6f8; --line:#c9d3da; --fg:#14212b; --muted:#5a6e7c; --accent:#1d6d99; --pres:#a8600a; --succ:#19739f; --ok:#237a47; --bad:#b8392a; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 8pt/1.3 "IBM Plex Sans", Arial, sans-serif; color: var(--fg); background: #fff; }
+.pag { width: 186mm; margin: 0 auto; padding: 0; page-break-after: always; break-after: page; display: flex; flex-direction: column; gap: 1.2mm; }
+.pag:last-child { page-break-after: auto; break-after: auto; }
+@media print { .pag { height: 271mm; overflow: hidden; } }
+@media screen { body { background: #e9eef1; padding: 8mm 0; } .pag { background: #fff; padding: 12mm; width: 210mm; min-height: 297mm; margin-bottom: 8mm; box-shadow: 0 1px 6px rgba(0,0,0,.15); } }
+header.fh { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--fg); padding-bottom: 2mm; }
+header.fh h1 { font: 700 14pt "Barlow Semi Condensed", Arial Narrow, sans-serif; margin: 0; }
+header.fh .m { text-align: right; font-size: 8pt; color: var(--muted); }
+h2 { font: 700 9.5pt "Barlow Semi Condensed", Arial Narrow, sans-serif; margin: 1.5mm 0 .3mm; color: var(--accent); text-transform: uppercase; letter-spacing: .04em; }
+table { border-collapse: collapse; width: 100%; font-size: 7.4pt; }
+th, td { border: 1px solid var(--line); padding: .6mm 1.2mm; text-align: left; vertical-align: top; }
+th { background: var(--panel2); font-weight: 600; font-size: 7.5pt; }
+td.n, th.n, .n { text-align: right; font-variant-numeric: tabular-nums; }
+.kv { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border: 1px solid var(--line); }
+.kv div { padding: .6mm 1.2mm; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); font-size: 7.4pt; }
+.kv b { display: block; font-size: 7pt; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+.note, p { font-size: 7.4pt; color: #33434f; margin: .4mm 0; }
+.sub { color: var(--muted); font-size: 7pt; }
+.pP { color: var(--pres); } .pS { color: var(--succ); }
+.pill { display: inline-block; font-size: 6.5pt; border: 1px solid currentColor; border-radius: 8px; padding: 0 4px; margin: 0 1px 1px 0; }
+.pill.ok { color: var(--ok); } .pill.bad { color: var(--bad); }
+svg { width: 100%; height: auto; max-height: 66mm; display: block; margin: 0 auto; }
+svg text { font-family: "IBM Plex Mono", monospace; font-size: 11px; }
+.fig { border: 1px solid var(--line); padding: 1.5mm; }
+.legend { font-size: 7.5pt; color: var(--muted); display: flex; gap: 6mm; }
+.legend i { display: inline-block; width: 3mm; height: 3mm; margin-right: 1mm; vertical-align: -.4mm; }
+.mono { font-family: "IBM Plex Mono", monospace; }
+.btn, button, select, .act, .act-row { display: none !important; }
+tr.grp td { background: var(--panel2); font-weight: 600; }
+.handoff { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); }
+.handoff .fld { padding: 1mm 1.5mm; border-right: 1px solid var(--line); }
+.handoff .fld .lbl { display: block; font-size: 7pt; color: var(--muted); text-transform: uppercase; }
+.handoff .fld div { font: 600 10pt 'IBM Plex Mono', monospace; }
+.handoff .note { grid-column: 1 / -1; border-top: 1px solid var(--line); padding: 1mm 1.5mm; }
+footer.ff { margin-top: auto; border-top: 1px solid var(--line); padding-top: 1.5mm; font-size: 7pt; color: var(--muted); display: flex; justify-content: space-between; }`;
+
+function fichaClonar(id, quitar) {
+  const el = $(id); if (!el) return '';
+  const c = el.cloneNode(true);
+  c.removeAttribute('id'); c.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
+  c.querySelectorAll('.btn, button, select, label.f, .act-row, .seg').forEach((x) => x.remove());
+  if (quitar) c.querySelectorAll(quitar).forEach((x) => x.remove());
+  return c.tagName === 'TABLE' ? c.outerHTML : c.innerHTML;
+}
+function fichaBases(g) {
+  const z = g.zonaObj, T = N.TERRENO[g.exp], u = U();
+  const kv = [
+    ['Norma', 'NCh 432:2025'], ['Zona (Tabla 1)', `${z.id} · ${z.des}`], ['Velocidad básica V', `${nf(g.V, 1)} m/s${S.vMan ? ' (manual)' : ''}`],
+    ['p0 = 0,613·V²', `${nf(g.p0, 0)} N/m²`], ['Categoría de ocupación / I', `${S.cat} · I = ${nf(g.I, 2)}`], ['Kd (Tabla 3)', `${nf(g.Kd, 2)} · ${g.kdObj.tipo}`],
+    ['Exposición (5.5)', `${g.exp} · α = ${nf(T.alpha, 1)}, zg = ${T.zg} m, zmín = ${T.zmin} m`], ['Kz', S.kzMetodo === 'tabla' ? 'Tabla 5 (interpolación)' : 'Fórmula Nota 1, Tabla 5'],
+    ['Kzt (5.6)', `${nf(g.Kzt, 3)}${S.topo ? ' · ' + (N.TOPO[S.topoForma] || {}).nombre : ' · sin efecto topográfico'}`],
+    ['Ke (5.7)', `${nf(g.Ke, 3)} · ze = ${nf(+S.ze, 0)} msnm`], ['G (5.9)', `${nf(g.G, 2)} (rígida)`], ['Cerramiento / GCpi (Tabla 7)', `${g.cerrObj.nombre} · ±${nf(g.GCpi, 2)}`],
+  ];
+  return `<div class="kv">${kv.map(([a, b]) => `<div><b>${a}</b>${b}</div>`).join('')}</div>
+    <p class="note">Presión de velocidad: q(z) = 0,613·I·Kz·Kzt·Ke·V² [N/m²] (Ec. 2). Unidades del reporte: ${u.u} (presiones) y ${u.ul} (cargas lineales). Signo +: presión hacia la superficie; −: succión.</p>`;
+}
+function fichaStats(id) {
+  const el = $(id); if (!el) return '';
+  return `<div class="kv">${[...el.querySelectorAll('.stat')].map((st) => `<div><b>${st.querySelector('.lbl').textContent}</b>${st.querySelector('.v').textContent} ${st.querySelector('.u') ? st.querySelector('.u').textContent : ''}</div>`).join('')}</div>`;
+}
+const leyFicha = '<div class="legend"><span><i style="background:var(--pres)"></i>presión (+), hacia la superficie</span><span><i style="background:var(--succ)"></i>succión (−), alejándose</span></div>';
+function fichaHTML() {
+  const g = general();
+  render();
+  const proyecto = S.proyecto || 'Proyecto sin nombre';
+  const fecha = new Date().toLocaleDateString('es-CL');
+  const titulos = { galpon: 'Galpón', simple: 'Edificio bajo', cont: 'Contenedor', techo: 'Techumbre' };
+  const cab = (n) => `<header class="fh"><div><h1>Cargas de viento · ${titulos[tab]}</h1><div class="sub">${proyecto}</div></div><div class="m">NCh 432:2025<br>${fecha} · hoja ${n} de 2</div></header>`;
+  const pie = `<footer class="ff"><span>Viento NCh 432 · ficha de cálculo simplificada</span><span>${proyecto}</span></footer>`;
+  let p1 = '', p2 = '';
+  if (tab === 'galpon') {
+    const c = $('gVista').value;
+    p1 = `<h2>Bases de cálculo</h2>${fichaBases(g)}
+      <h2>Geometría y criterio</h2><p>${$('gEjesInfo').innerHTML.replace(/ Escriba separaciones[^.]*\.[^.]*\./, '')}</p><p>Método: ${$('gTit').textContent}. ${$('gIntro').textContent}</p>${fichaStats('gStats')}
+      <h2>Coeficientes</h2>${fichaClonar('gTraza', '.tbl + .tbl, .tbl:nth-of-type(n+2)')}
+      <h2>Estados de análisis</h2><p class="note">${$('gAnaRes').textContent}</p>${fichaClonar('gAnaT', 'th:last-child, td:last-child')}`;
+    p2 = `<h2>Disposición de cargas · estado ${c}</h2><p class="note">${$('gVistaDesc').textContent}</p><div class="fig">${$('gVP').innerHTML}${$('gVS').innerHTML}${leyFicha}</div>
+      <h2>Cargas para SAP · estado ${c}</h2>${fichaClonar('gSap', 'h4')}
+      <h2>Casos de diseño Fig. 11 (6.3.5)</h2><p>Caso 1: cada estado por separado (100 %). Caso 3: 0,75·muros de un estado X + 0,75·muros de un estado Y simultáneos, techo al 100 % del mayor valor del caso 1. Casos 2 y 4 (torsión sobre diafragma por nivel): ${S.gDiaf ? 'aplican; niveles ' + S.gNiveles + ' m.' : 'no aplican, estructura sin niveles con diafragma.'}</p>${fichaClonar('gFig11')}`;
+  } else if (tab === 'simple') {
+    const anexo = S.sMetodo !== 'cap7';
+    p1 = `<h2>Bases de cálculo</h2>${fichaBases(g)}
+      <h2>Geometría y criterio</h2><p>Largo ${fm(+S.sLargo)} m · ancho ${fm(+S.sAncho)} m · alero ${fm(+S.sAlero)} m · techo ${S.sTecho === 'dos' ? 'a dos aguas' : S.sTecho === 'una' ? 'de una agua' : 'plano'}${S.sTecho !== 'plana' ? `, θ = ${nf(+S.sTheta, 1)}°` : ''}.</p><p>${$('sTit').textContent}. ${$('sIntro').textContent}</p>${fichaStats('sStats')}
+      <h2>Condiciones y coeficientes</h2>${fichaClonar('sChecks')}
+      <h2>Presiones de diseño por superficie</h2>${fichaClonar('sRes')}<p class="note">${$('sResNota').innerHTML}</p>`;
+    p2 = `<h2>Disposición de cargas</h2>${anexo ? `<p class="note">${$('sVistaDesc').textContent}</p><div class="fig">${$('sVP').innerHTML}${$('sVS').innerHTML}${leyFicha}</div>` : `<div class="fig">${$('sDia').innerHTML}</div>`}
+      <h2>Elementos locales</h2><p>Luz L = ${fm(+S.sH)} m · ancho tributario s = ${fm(+S.sSep)} m.</p>${fichaClonar('sTab')}<p class="note">${$('sTabNota').innerHTML}</p>`;
+  } else if (tab === 'cont') {
+    p1 = `<h2>Bases de cálculo</h2>${fichaBases(g)}
+      <h2>Geometría y criterio</h2><p>Módulo l × b × h = ${fm(+S.cLargo)} × ${fm(+S.cAncho)} × ${fm(+S.cAlto)} m · ${S.cNiv} nivel(es) · apoyos de ${fm(+S.cApoyo)} m. Método: ${S.cMetodo === 'anexoA' ? 'Anexo A (pz = p0·Kz·C)' : 'cap. 6 direccional (p = q·Kd·G·Cp − qh·Kd·GCpi)'}. Edificio cerrado pequeño de techo plano; sobre apoyos, edificio elevado (6.3.1.1). Mínimo 0,25 kN/m² en muros (6.1.5).</p>${fichaStats('cStats')}
+      <h2>Presiones en los costados por nivel</h2>${fichaClonar('cCaras')}`;
+    p2 = `<h2>Disposición de cargas</h2><div class="fig">${$('cFig').innerHTML}</div>
+      <h2>Estabilidad y anclajes (verificación complementaria)</h2><p>Peso por módulo ${nf(+S.cPeso, 0)} kg · μ = ${nf(+S.cMu, 2)} · ${nf(+S.cGD, 2)}D + ${nf(+S.cGW, 2)}W · FS mín ${nf(+S.cFS, 2)}.</p>${fichaClonar('cRes')}`;
+  } else {
+    p1 = `<h2>Bases de cálculo</h2>${fichaBases(g)}
+      <h2>Geometría y criterio</h2><p>Luz de la cercha ${fm(+S.tLuz)} m · largo ${fm(+S.tLargo)} m · alero ${fm(+S.tAlero)} m · techo ${S.tTecho === 'dos' ? 'a dos aguas' : S.tTecho === 'una' ? 'de una agua' : 'plano'}${S.tTecho !== 'plana' ? `, θ = ${nf(+S.tTheta, 1)}°` : ''} · viento ${S.tDir === 'normal' ? 'normal' : 'paralelo'} a la cumbrera. Método: ${S.tMetodo === 'anexoA' ? 'Anexo A' : 'cap. 6 (Fig. 4)'}. La cercha es parte del SPRFV (3.29).</p>${fichaStats('tStats')}
+      <h2>Combinaciones (q, Cpi, Cp)</h2>${fichaClonar('tCombos')}`;
+    p2 = `<h2>Disposición de cargas · caso seleccionado</h2><div class="fig">${$('tDia').innerHTML}${leyFicha}</div>
+      <h2>Valores para el cálculo de la cercha</h2><div class="handoff">${fichaClonar('tHand')}</div><p class="note">p = q·(Cp − Cpi) [kPa].</p>`;
+  }
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ficha viento · ${titulos[tab]} · ${proyecto}</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;600&display=swap">
+    <style>${FICHA_CSS}</style></head><body>
+    <section class="pag">${cab(1)}${p1}${pie}</section><section class="pag">${cab(2)}${p2}${pie}</section></body></html>`;
+}
+let fichaTxt = '';
+$('bFicha').onclick = () => {
+  fichaTxt = fichaHTML();
+  $('dFichaFrame').srcdoc = fichaTxt;
+  $('dFichaTxt').textContent = 'Pestaña ' + ({ galpon: 'Galpón', simple: 'Edificio bajo', cont: 'Contenedor', techo: 'Techumbre' })[tab] + ' · A4, 2 hojas';
+  const d = $('dFicha');
+  if (typeof d.showModal === 'function') { try { d.showModal(); } catch (e) { d.setAttribute('open', ''); } } else d.setAttribute('open', '');
+};
+$('dFImprimir').onclick = () => {
+  let ok = false;
+  try { const w = $('dFichaFrame').contentWindow; w.focus(); w.print(); ok = true; } catch (e) { ok = false; }
+  if (!ok) toast('Este visor no permite imprimir: descargue la ficha y ábrala en el navegador');
+  else setTimeout(() => toast('Si no se abrió el diálogo de impresión, descargue la ficha (.html) y ábrala en el navegador'), 1200);
+};
+$('dFDescargar').onclick = () => {
+  const n = (S.proyecto || 'proyecto').trim().replace(/[^\w\-áéíóúñÁÉÍÓÚÑ ]+/g, '').replace(/\s+/g, '_') || 'proyecto';
+  descargar(`ficha_viento_${tab}_${n}.html`, fichaTxt || fichaHTML(), 'text/html');
+};
+$('dFCerrar').onclick = () => { const d = $('dFicha'); try { d.close(); } catch (e) { d.removeAttribute('open'); } };
+
 /* ---------------- guardar / abrir proyecto (archivo .json portable) ---------------- */
 let dModo = 'guardar';
 function abrirDialogo(modo) {
@@ -600,7 +741,7 @@ function textoProyecto() {
 }
 // Descarga: en el visor de claude.ai usa la capacidad "downloads"; en el archivo portable, un enlace normal.
 let dlCap;
-async function descargar(nombre, texto) {
+async function descargar(nombre, texto, tipo) {
   try {
     if (dlCap === undefined) dlCap = (window.claude && typeof window.claude.use === 'function') ? await window.claude.use('downloads') : null;
   } catch (e) { dlCap = null; }
@@ -610,7 +751,7 @@ async function descargar(nombre, texto) {
     return;
   }
   try {
-    const b = new Blob([texto], { type: 'application/json' });
+    const b = new Blob([texto], { type: tipo || 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(b); a.download = nombre; document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
@@ -852,8 +993,8 @@ function plantaSVG(geo, caso, conEjes) {
     g += muro('Frontón Y−', px(0), py(0), px(0), py(An), -1, 0, px(0) - 26, py(An / 2) - 8, 'end');
     g += muro('Frontón Y+', px(Lg), py(0), px(Lg), py(An), 1, 0, px(Lg) + 26, py(An / 2) - 8, 'start');
     const cx = px(Lg / 2), cy = py(An / 2);
-    if (caso.dir === 'X') g += caso.sentido > 0 ? flechaViento(px(Lg) + 48, H - 8, 0, -1, 'viento') : flechaViento(px(Lg) + 48, 8, 0, 1, 'viento');
-    else g += caso.sentido > 0 ? flechaViento(8, cy + 30, 1, 0, 'viento') : flechaViento(W - 8, cy + 30, -1, 0, 'viento');
+    if (caso.dir === 'X') g += caso.sentido > 0 ? flechaViento(px(Lg) + 40, H - 8, 0, -1, 'WX') : flechaViento(px(Lg) + 40, 8, 0, 1, 'WX');
+    else g += caso.sentido > 0 ? flechaViento(8, cy + 30, 1, 0, 'WY') : flechaViento(W - 8, cy + 30, -1, 0, 'WY');
   }
   return `<svg class="dia" viewBox="0 0 ${W} ${H}" role="img" aria-label="Planta">${g}</svg>`;
 }
