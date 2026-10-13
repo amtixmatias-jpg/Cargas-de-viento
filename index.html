@@ -480,8 +480,8 @@ footer.pie b { color: var(--ink); font-weight: 700; }
 <!-- ---------- CONTENEDOR ---------- -->
 <section id="p-cont" role="tabpanel" aria-labelledby="tab-cont" hidden style="display:grid;gap:16px">
   <div class="intro"><h2>Contenedor · análisis puntual</h2>
-    <p>Módulos tipo oficina o bodega, apilados y sobre apoyos: presiones en los costados por nivel y, como verificación complementaria, volcamiento, deslizamiento y anclajes.</p></div>
-  <p class="note" style="margin:0">Base normativa: la NCh 432:2025 no tiene un apartado para contenedores de oficina (el 9.10 trata contenedores circulares, silos y tanques). Se tratan como edificio cerrado pequeño de techo plano, por el cap. 6 o por el Anexo A si cumple A.0. Sobre apoyos es un edificio elevado (3.10, 6.3.1.1): los apoyos reciben un coeficiente de fuerza neta de 1,3 con qz en z = hapoyo + 0,25(h − hapoyo), y las cargas de la cara inferior no se usan para reducir el volcamiento. Se exige la carga mínima de 0,25 kN/m² en muros (6.1.5). Volcamiento, deslizamiento y anclaje son verificaciones de estabilidad.</p>
+    <p>Módulos tipo oficina o bodega, apilados, sobre apoyos puntuales o fijos a un radier: presiones en los costados por nivel y, como verificación complementaria, reacciones en apoyos y anclajes.</p></div>
+  <p class="note" style="margin:0">Base normativa: la NCh 432:2025 no tiene un apartado para contenedores de oficina (el 9.10 trata contenedores circulares, silos y tanques). Se tratan como edificio cerrado pequeño de techo plano, por el cap. 6 o por el Anexo A si cumple A.0. Sobre apoyos es un edificio elevado (3.10, 6.3.1.1): los apoyos reciben un coeficiente de fuerza neta de 1,3 con qz en z = hapoyo + 0,25(h − hapoyo), y las cargas de la cara inferior no se usan para reducir el volcamiento. Fijo sobre radier no hay apoyos expuestos y la base queda a nivel de terreno. Se exige la carga mínima de 0,25 kN/m² en muros (6.1.5).</p>
   <div class="card">
     <h3>Contenedor</h3>
     <div class="row4">
@@ -491,28 +491,38 @@ footer.pie b { color: var(--ink); font-weight: 700; }
       <label class="f"><span>Ancho b [m]</span><input type="number" id="cAncho" step="0.01" min="0"></label>
       <label class="f"><span>Alto h por módulo [m]</span><input type="number" id="cAlto" step="0.01" min="0"></label>
       <label class="f"><span>Niveles apilados</span><input type="number" id="cNiv" step="1" min="1"></label>
-      <label class="f"><span>Altura de apoyos [m]</span><input type="number" id="cApoyo" step="0.05" min="0"></label>
-      <label class="f"><span>Área de apoyos por cara [m²]</span><input type="number" id="cAsup" step="0.05" min="0"></label>
-      <label class="chk" style="grid-column:span 2"><input type="checkbox" id="cTecho"> Considerar la succión de techo en la estabilidad</label>
+      <label class="f" style="grid-column:span 2"><span>Fijación a la base</span><select id="cApoyoT"><option value="apoyos">Sobre apoyos puntuales (poyos, dados o pilotes)</option><option value="radier">Fijo sobre radier (anclado a la losa)</option></select></label>
+      <label class="f"><span id="cNlLbl">Apoyos a lo largo de l</span><input type="number" id="cNl" step="1" min="2"></label>
+      <label class="f"><span id="cNbLbl">Apoyos a lo ancho de b</span><input type="number" id="cNb" step="1" min="2"></label>
+      <label class="f" id="cApoyoBox"><span>Altura de apoyos [m]</span><input type="number" id="cApoyo" step="0.05" min="0"></label>
+      <label class="f" id="cAapBox"><span>Ancho de cada apoyo [m]</span><input type="number" id="cAap" step="0.05" min="0"></label>
     </div>
+    <p class="note" id="cApoyoInfo" style="margin:10px 0 0"></p>
   </div>
   <div class="card" id="cChkCard"><h3>Condiciones del Anexo A (A.0)</h3><div id="cChecks" style="display:flex;flex-wrap:wrap;gap:6px 4px"></div></div>
   <div class="stats" id="cStats"></div>
-  <div class="card"><h3>Contenedores apilados
-      <label class="f act" style="min-width:220px"><select id="cDir" aria-label="Dirección del viento"><option value="transversal">Viento sobre la cara larga</option><option value="longitudinal">Viento sobre la cara corta</option></select></label></h3>
+  <div class="card"><h3>Contenedores apilados</h3>
+    <div class="tabs2" id="cFigTabs" role="tablist" aria-label="Dirección del viento y presión interna"></div>
+    <p class="note" id="cFigDesc" style="margin:0 0 8px"></p>
     <div id="cFig"></div></div>
   <div class="card"><h3>Presiones en los costados por nivel</h3><div id="cCaras" style="display:grid;gap:16px"></div></div>
-  <details class="card fold"><summary>Estabilidad y anclajes (verificación complementaria)</summary><div class="foldbody">
+  <details class="card fold"><summary>Reacciones en apoyos y anclajes <span class="hint">verificación complementaria, no va en la ficha</span></summary><div class="foldbody">
     <div class="row4" style="margin-bottom:12px">
       <label class="f"><span>Peso por módulo [kg]</span><input type="number" id="cPeso" step="50" min="0"></label>
-      <label class="f"><span>Roce μ</span><input type="number" id="cMu" step="0.05" min="0"></label>
-      <label class="f"><span>FS mínimo</span><input type="number" id="cFS" step="0.1" min="0"></label>
-      <label class="f"><span>Anclajes por lado</span><input type="number" id="cAnc" step="1" min="1"></label>
       <label class="f"><span>γD (peso)</span><input type="number" id="cGD" step="0.1" min="0"></label>
       <label class="f"><span>γW (viento)</span><input type="number" id="cGW" step="0.1" min="0"></label>
+      <label class="chk" style="align-self:end"><input type="checkbox" id="cTecho"> Incluir succión de techo</label>
     </div>
-    <p class="note">Peso: solo cargas permanentes siempre presentes (tara y terminaciones). Anclaje con γD·D + γW·W (por defecto 0,9D + 1,6W, NCh 3171).</p>
-    <div class="split" id="cRes"></div></div></details>
+    <p class="note">Peso: solo cargas permanentes siempre presentes (tara y terminaciones). Tracción con γD·D + γW·W (por defecto 0,9D + 1,6W, NCh 3171); compresión en servicio D + W. Filas de apoyos equiespaciadas en la profundidad, cuerpo rígido con reparto lineal; la tracción la toma la fila de barlovento. El área de apoyos se carga completa, sin apantallamiento entre filas.</p>
+    <div class="split" id="cRes"></div>
+    <div id="cSinBox" style="margin-top:14px">
+      <label class="chk"><input type="checkbox" id="cSinAnc"> Verificar también como simplemente apoyado, sin anclajes</label>
+      <div class="row4" id="cSinPar" style="margin-top:10px">
+        <label class="f"><span>Roce μ</span><input type="number" id="cMu" step="0.05" min="0"></label>
+        <label class="f"><span>FS mínimo</span><input type="number" id="cFS" step="0.1" min="0"></label>
+      </div>
+      <div class="split" id="cSin" style="margin-top:10px"></div>
+    </div></div></details>
 </section>
 
 <!-- ---------- TECHUMBRE ---------- -->
@@ -587,7 +597,7 @@ const DEFAULTS = {
   cerr: 'cerrado', Ao: 0, Ag: 200, Aoi: 0, Agi: 800, ab80: false, Aog: 0, Vi: 0,
   gLargo: 51.8, gAncho: 13.9, gAlero: 6.4, gTecho: 'dos', gTheta: 10, gMetodo: 'cap6', gF060: false, gDiaf: false, gNiveles: '3.5, 3.0', gFig: '1', gC3: '0', gEjesY: '5.2, 6*6.9, 5.2', gEjesX: '6.95, 6.95', gVista: 'WXP_1', gRed: false, gMarco: 2, gCaso: 'WXP_1',
   sMetodo: 'anexoA', sF060: false, sVista: 'WXP_1', sH: 2.4, sSep: 0.6, sLargo: 14, sAncho: 8, sAlero: 2.6, sTecho: 'dos', sTheta: 20, sTrib: 1, sKd: true,
-  cTipo: '20', cLargo: 6.06, cAncho: 2.44, cAlto: 2.59, cNiv: 1, cApoyo: 0.3, cPeso: 2400, cMetodo: 'cap6', cDir: 'transversal', cTecho: false, cAsup: 0.3, cMu: 0.4, cFS: 1.5, cGD: 0.9, cGW: 1.6, cAnc: 2,
+  cTipo: '20', cLargo: 6.06, cAncho: 2.44, cAlto: 2.59, cNiv: 1, cApoyo: 0.3, cPeso: 2400, cMetodo: 'cap6', cDir: 'transversal', cSg: '1', cTecho: false, cApoyoT: 'apoyos', cNl: 2, cNb: 2, cAap: 0.2, cSinAnc: false, cMu: 0.4, cFS: 1.5, cGD: 0.9, cGW: 1.6,
   tMetodo: 'cap6', tLuz: 10, tLargo: 30, tAlero: 3.5, tTecho: 'dos', tTheta: 15, tDir: 'normal', tX: 0,
 };
 const CONT = { '20': [6.06, 2.44, 2.59, 2400], '40': [12.19, 2.44, 2.59, 4000], '40hc': [12.19, 2.44, 2.9, 4200], '10': [2.99, 2.44, 2.59, 1500] };
@@ -675,6 +685,9 @@ td.n, th.n, .n { text-align: right; font-variant-numeric: tabular-nums; }
 .hint { color: var(--muted); font-size: 7pt; font-weight: 400; }
 .pill.ok { color: var(--ok); } .pill.bad { color: var(--bad); }
 svg { width: 100%; height: auto; max-height: 66mm; display: block; margin: 0 auto; }
+.fig2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2mm 4mm; }
+.fig2 svg { max-height: 74mm; }
+.fig2 .note { margin: 0; }
 svg text { font-family: "IBM Plex Mono", Consolas, monospace; font-size: 11px; }
 .fig { border: 1px solid var(--line); padding: 1.5mm; }
 .legend { font-size: 7.5pt; color: var(--muted); display: flex; gap: 6mm; }
@@ -743,10 +756,13 @@ function fichaHTML() {
       <h2>Elementos locales</h2><p>Luz L = ${fm(+S.sH)} m · ancho tributario s = ${fm(+S.sSep)} m.</p>${fichaClonar('sTab')}<p class="note">${$('sTabNota').innerHTML}</p>`;
   } else if (tab === 'cont') {
     p1 = `<h2>Bases de cálculo</h2>${fichaBases(g)}
-      <h2>Geometría y criterio</h2><p>Módulo l × b × h = ${fm(+S.cLargo)} × ${fm(+S.cAncho)} × ${fm(+S.cAlto)} m · ${S.cNiv} nivel(es) · apoyos de ${fm(+S.cApoyo)} m. Método: ${S.cMetodo === 'anexoA' ? 'Anexo A (pz = p0·Kz·C)' : 'cap. 6 direccional (p = q·Kd·G·Cp − qh·Kd·GCpi)'}. Edificio cerrado pequeño de techo plano; sobre apoyos, edificio elevado (6.3.1.1). Mínimo 0,25 kN/m² en muros (6.1.5).</p>${fichaStats('cStats')}
+      <h2>Geometría y criterio</h2><p>Módulo l × b × h = ${fm(+S.cLargo)} × ${fm(+S.cAncho)} × ${fm(+S.cAlto)} m · ${S.cNiv} nivel(es) · ${contUlt.r.radier ? `fijo sobre radier, ${contUlt.r.nTot} anclajes (${contUlt.r.nL} × ${contUlt.r.nB})` : `sobre ${contUlt.r.nTot} apoyos puntuales (${contUlt.r.nL} × ${contUlt.r.nB}) de ${fm(+S.cAap)} m de ancho y ${fm(contUlt.r.hAp)} m de alto`}. Método: ${S.cMetodo === 'anexoA' ? 'Anexo A (pz = p0·Kz·C)' : 'cap. 6 direccional (p = q·Kd·G·Cp − qh·Kd·GCpi)'}. Edificio cerrado pequeño de techo plano${contUlt.r.radier ? '' : '; sobre apoyos, edificio elevado (6.3.1.1): Cf = 1,3 en los apoyos con qz en z = ' + fm(contUlt.r.zs) + ' m'}. Mínimo 0,25 kN/m² en muros (6.1.5).</p>${fichaStats('cStats')}
       <h2>Presiones en los costados por nivel</h2>${fichaClonar('cCaras')}`;
-    p2 = `<h2>Disposición de cargas</h2><div class="fig">${$('cFig').innerHTML}</div>
-      <h2>Estabilidad y anclajes (verificación complementaria)</h2><p>Peso por módulo ${nf(+S.cPeso, 0)} kg · μ = ${nf(+S.cMu, 2)} · ${nf(+S.cGD, 2)}D + ${nf(+S.cGW, 2)}W · FS mín ${nf(+S.cFS, 2)}.</p>${fichaClonar('cRes')}`;
+    const { c: cc, r: rc } = contUlt, anx = rc.metodo === 'anexoA';
+    const figs = [];
+    for (const d of rc.res) for (const sg of anx ? [1] : [1, -1]) figs.push(`<div><p class="note"><b>${contVistaTxt(d, sg, anx)}</b></p>${contSVG(cc, d, rc, sg, anx)}</div>`);
+    p2 = `<h2>Disposición de cargas</h2><p class="note">Presiones por nivel en barlovento (izquierda) y sotavento (derecha), en ${U().u}. ${anx ? 'Anexo A: sin presión interna, un estado por dirección.' : 'Cap. 6: se muestran ambos signos de la presión interna en cada dirección.'}</p>
+      <div class="fig"><div class="fig2">${figs.join('')}</div>${leyFicha}</div>`;
   } else {
     p1 = `<h2>Bases de cálculo</h2>${fichaBases(g)}
       <h2>Geometría y criterio</h2><p>Luz de la cercha ${fm(+S.tLuz)} m · largo ${fm(+S.tLargo)} m · alero ${fm(+S.tAlero)} m · techo ${S.tTecho === 'dos' ? 'a dos aguas' : S.tTecho === 'una' ? 'de una agua' : 'plano'}${S.tTecho !== 'plana' ? `, θ = ${nf(+S.tTheta, 1)}°` : ''} · viento ${S.tDir === 'normal' ? 'normal' : 'paralelo'} a la cumbrera. Método: ${S.tMetodo === 'anexoA' ? 'Anexo A' : 'cap. 6 (Fig. 4)'}. La cercha es parte del SPRFV (3.29).</p>${fichaStats('tStats')}
@@ -1594,68 +1610,99 @@ function planta(Lg, An, e2) {
 }
 
 /* ---------------- CONTENEDOR ---------------- */
-function contSVG(c, d, r) {
-  const W = 620, H = 330, n = c.niveles;
-  const Ltot = d.L, Htot = c.hApoyo + n * c.alto;
-  const s = Math.min(300 / Ltot, (H - 90) / Htot);
-  const x0 = (W - Ltot * s) / 2, zb = H - 34;
+const contVistaTxt = (d, sg, anexo) => `${d.dir === 'transversal' ? 'Viento sobre la cara larga' : 'Viento sobre la cara corta'}${anexo ? '' : ` · ${sg > 0 ? '+GCpi (presión interior)' : '−GCpi (succión interior)'}`}`;
+function contSVG(c, d, r, sg, anexo) {
+  const W = 620, H = 340, n = c.niveles, hAp = r.hAp;
+  const Ltot = d.L, Htot = hAp + n * c.alto;
+  const s = Math.min(300 / Ltot, (H - 100) / Htot);
+  const x0 = (W - Ltot * s) / 2, zb = H - 40;
   const X = (x) => x0 + x * s, Z = (z) => zb - z * s;
   let g = `<line x1="${X(0) - 70}" y1="${zb}" x2="${X(Ltot) + 70}" y2="${zb}" stroke="var(--line)" stroke-width="2"/>`;
-  if (c.hApoyo > 0) for (const x of [0.15, Ltot - 0.15]) g += `<rect x="${X(x) - 4}" y="${Z(c.hApoyo)}" width="8" height="${c.hApoyo * s}" fill="var(--muted)"/>`;
+  const filas = []; for (let i = 0; i < d.nFilas; i++) filas.push(i * Ltot / (d.nFilas - 1));
+  if (r.radier) {
+    const e = 9;
+    g += `<defs><pattern id="hatchR" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="var(--muted)" stroke-width="1"/></pattern></defs>
+      <rect x="${X(0) - 24}" y="${zb}" width="${Ltot * s + 48}" height="${e}" fill="url(#hatchR)" stroke="var(--muted)"/>
+      <text x="${X(Ltot) + 28}" y="${zb + 8}" fill="var(--muted)">radier</text>`;
+    for (const x of filas) { const xx = X(Math.min(Math.max(x, 0.1), Ltot - 0.1)); g += `<path d="M${xx - 5},${zb} l5,-7 l5,7 z" fill="var(--accent)"/>`; }
+  } else if (hAp > 0) {
+    const aw = Math.max(6, (+S.cAap || 0.2) * s);
+    for (const x of filas) { const xx = X(Math.min(Math.max(x, (+S.cAap || 0.2) / 2), Ltot - (+S.cAap || 0.2) / 2)); g += `<rect x="${xx - aw / 2}" y="${Z(hAp)}" width="${aw}" height="${hAp * s}" fill="var(--muted)" opacity=".75"/>`; }
+    g += `<text x="${X(Ltot) + 70}" y="${Z(hAp / 2) + 4}" fill="var(--muted)">apoyos ${fm(hAp)} m</text>`;
+  }
   for (let k = 0; k < n; k++) {
-    const z0 = c.hApoyo + k * c.alto;
+    const z0 = hAp + k * c.alto;
     g += `<rect x="${X(0)}" y="${Z(z0 + c.alto)}" width="${Ltot * s}" height="${c.alto * s}" fill="var(--panel2)" stroke="var(--fg)" stroke-width="1.5"/>`;
     for (let j = 1; j < 8; j++) g += `<line x1="${X(Ltot * j / 8)}" y1="${Z(z0 + c.alto) + 4}" x2="${X(Ltot * j / 8)}" y2="${Z(z0) - 4}" stroke="var(--line)"/>`;
     const lv = d.niveles[k];
-    for (let j = 1; j < 4; j++) {
-      g += flecha(X(0), Z(z0 + c.alto * j / 4), -1, 0, lv.barl.pos, 24) + flecha(X(Ltot), Z(z0 + c.alto * j / 4), 1, 0, lv.sot.pos, 24);
-    }
-    g += `<text x="${X(0) - 34}" y="${Z(z0 + c.alto / 2) - 14}" text-anchor="middle" fill="${colorV(lv.barl.pos)}">${valTxt(lv.barl.pos)}</text>
-      <text x="${X(Ltot) + 34}" y="${Z(z0 + c.alto / 2) - 14}" text-anchor="middle" fill="${colorV(lv.sot.pos)}">${valTxt(lv.sot.pos)}</text>
+    const vb = sg > 0 ? lv.barl.pos : lv.barl.neg, vs = sg > 0 ? lv.sot.pos : lv.sot.neg;
+    for (let j = 1; j < 4; j++) g += flecha(X(0), Z(z0 + c.alto * j / 4), -1, 0, vb, 24) + flecha(X(Ltot), Z(z0 + c.alto * j / 4), 1, 0, vs, 24);
+    g += `<text x="${X(0) - 34}" y="${Z(z0 + c.alto / 2) - 14}" text-anchor="middle" fill="${colorV(vb)}">${valTxt(vb)}</text>
+      <text x="${X(Ltot) + 34}" y="${Z(z0 + c.alto / 2) - 14}" text-anchor="middle" fill="${colorV(vs)}">${valTxt(vs)}</text>
       <text x="${X(Ltot / 2)}" y="${Z(z0 + c.alto / 2) + 4}" text-anchor="middle" fill="var(--muted)">nivel ${k + 1}</text>`;
   }
-  g += `<text x="${X(Ltot / 2)}" y="${zb + 18}" text-anchor="middle" fill="var(--fg)">${d.dir === 'transversal' ? 'b' : 'l'} = ${fm(Ltot)} m (profundidad)</text>
-    <text x="${X(Ltot) + 70}" y="${Z(c.hApoyo + c.alto / 2)}" fill="var(--muted)">h = ${fm(c.alto)} m</text>
-    <text x="8" y="16" fill="var(--muted)">Elevación · cara expuesta de ${fm(d.B)} m (${d.dir === 'transversal' ? 'largo l' : 'ancho b'}) · caso +GCpi</text>`;
+  g += `<text x="${X(Ltot / 2)}" y="${zb + (r.radier ? 26 : 18)}" text-anchor="middle" fill="var(--fg)">${d.dir === 'transversal' ? 'b' : 'l'} = ${fm(Ltot)} m (profundidad)</text>
+    <text x="${X(Ltot) + 70}" y="${Z(hAp + c.alto / 2)}" fill="var(--muted)">h = ${fm(c.alto)} m</text>
+    <text x="8" y="16" fill="var(--muted)">Elevación · cara expuesta de ${fm(d.B)} m (${d.dir === 'transversal' ? 'largo l' : 'ancho b'})${anexo ? ' · Anexo A, sin presión interna' : ` · caso ${sg > 0 ? '+' : '−'}GCpi`}</text>`;
   g += flechaViento(14, Z(Htot / 2) + 36, 1, 0, '');
-  return `<svg class="dia" viewBox="0 0 ${W} ${H}" role="img" aria-label="Contenedores apilados">${g}</svg>${leyenda}`;
+  return `<svg class="dia" viewBox="0 0 ${W} ${H}" role="img" aria-label="Contenedores apilados">${g}</svg>`;
 }
+let contUlt = null;
 function renderCont(g) {
+  const radier = S.cApoyoT === 'radier';
   const c = { largo: +S.cLargo, ancho: +S.cAncho, alto: +S.cAlto, niveles: Math.max(1, Math.round(+S.cNiv)), hApoyo: +S.cApoyo, peso: +S.cPeso,
-    mu: +S.cMu, gD: +S.cGD, gW: +S.cGW, anclajesLado: Math.max(1, Math.round(+S.cAnc)), metodo: S.cMetodo, Asup: +S.cAsup, techo: !!S.cTecho };
+    mu: +S.cMu, gD: +S.cGD, gW: +S.cGW, metodo: S.cMetodo, apoyo: radier ? 'radier' : 'apoyos', nL: +S.cNl, nB: +S.cNb, aAp: +S.cAap, techo: !!S.cTecho };
   const r = N.contenedor(gA(g), c);
+  contUlt = { c, r };
   const anexo = r.metodo === 'anexoA';
   const u = U(), kgf = (N_) => N_ / N.G_ACC, FSmin = +S.cFS;
+  $('cApoyoBox').hidden = radier; $('cAapBox').hidden = radier;
+  $('cNlLbl').textContent = radier ? 'Anclajes a lo largo de l' : 'Apoyos a lo largo de l';
+  $('cNbLbl').textContent = radier ? 'Anclajes a lo ancho de b' : 'Apoyos a lo ancho de b';
+  $('cApoyoInfo').innerHTML = radier
+    ? `Fijo sobre radier: base a nivel de terreno, sin apoyos expuestos al viento. ${r.nL} × ${r.nB} = <b>${r.nTot} anclajes</b> en filas equiespaciadas.`
+    : `${r.nL} × ${r.nB} = <b>${r.nTot} apoyos</b> de ${fm(+S.cAap)} m de ancho y ${fm(r.hAp)} m de alto · área expuesta ${nf(r.Aap, 2)} m² (todos los apoyos, sin apantallamiento) con Cf = 1,3 (6.3.1.1).`;
   $('cChkCard').hidden = !anexo;
   $('cChecks').innerHTML = r.checksA.map((x) => pillOk(x.ok, x.txt)).join(' ');
-  $('cStats').innerHTML = stat('Altura total', nf(r.h, 2), 'm') + stat('Kh', nf(r.Kh, 3)) + stat(anexo ? 'pz = p0·Kz' : 'qh', nf(u.f(r.qh), u.d), u.u) + stat('Peso total', nf(kgf(r.pesoN), 0), 'kgf');
-  const dsel = r.res.find((d) => d.dir === S.cDir) || r.res[0];
-  $('cFig').innerHTML = contSVG(c, dsel, r);
+  $('cStats').innerHTML = stat('Altura total', nf(r.h, 2), 'm') + stat('Kh', nf(r.Kh, 3)) + stat(anexo ? 'pz = p0·Kz' : 'qh', nf(u.f(r.qh), u.d), u.u) + stat(radier ? 'Anclajes' : 'Apoyos', r.nTot) + stat('Peso total', nf(kgf(r.pesoN), 0), 'kgf');
+  // Vistas: dirección × ±GCpi (el Anexo A no tiene presión interna)
+  const vistas = [];
+  for (const d of r.res) for (const sg of anexo ? [1] : [1, -1]) vistas.push({ d, sg, k: d.dir + '|' + sg });
+  let v = vistas.find((x) => x.k === S.cDir + '|' + S.cSg) || vistas.find((x) => x.d.dir === S.cDir) || vistas[0];
+  $('cFigTabs').innerHTML = vistas.map((x) => `<button type="button" role="tab" data-cv="${x.k}" aria-selected="${x === v}">${x.d.dir === 'transversal' ? 'Cara larga' : 'Cara corta'}${anexo ? '' : ` · ${x.sg > 0 ? '+' : '−'}GCpi`}</button>`).join('');
+  $('cFigDesc').textContent = contVistaTxt(v.d, v.sg, anexo) + `. Presión ${anexo ? 'p = pz·C' : 'neta p = q·Kd·G·Cp ∓ qh·Kd·GCpi'} en ${u.u}; flecha hacia la cara = presión, alejándose = succión.`;
+  $('cFig').innerHTML = contSVG(c, v.d, r, v.sg, anexo) + leyenda;
   // Costados por nivel
-  $('cCaras').innerHTML = r.res.map((d) => `<div class="card" style="padding:0;border:0"><h4 class="sub4">${d.dir === 'transversal' ? 'Viento sobre la cara larga (l)' : 'Viento sobre la cara corta (b)'} <span class="hint">cara expuesta ${fm(d.B)} m · profundidad ${fm(d.L)} m</span></h4>
-    <div class="tbl"><table><thead><tr><th>Nivel</th><th class="n">z [m]</th><th class="n">Barlovento +GCpi / −GCpi</th><th class="n">Sotavento +/−</th><th class="n">Laterales +/−</th><th class="n">Fuerza horizontal del nivel [kgf]</th></tr></thead><tbody>
-    ${d.niveles.map((lv) => `<tr><td>${lv.k}</td><td class="n">${fm(lv.z0)}–${fm(lv.z1)}</td><td class="n">${P(lv.barl.pos)} / ${P(lv.barl.neg)}</td><td class="n">${P(lv.sot.pos)} / ${P(lv.sot.neg)}</td><td class="n">${P(lv.lat.pos)} / ${P(lv.lat.neg)}</td><td class="n">${nf(kgf(lv.Fh), 0)}</td></tr>`).join('')}
+  $('cCaras').innerHTML = r.res.map((d) => `<div class="card" style="padding:0;border:0;box-shadow:none"><h4 class="sub4">${d.dir === 'transversal' ? 'Viento sobre la cara larga (l)' : 'Viento sobre la cara corta (b)'} <span class="hint">cara expuesta ${fm(d.B)} m · profundidad ${fm(d.L)} m</span></h4>
+    <div class="tbl"><table><thead><tr><th>Nivel</th><th class="n">z [m]</th><th class="n">Barlovento${anexo ? '' : ' +GCpi / −GCpi'}</th><th class="n">Sotavento${anexo ? '' : ' +/−'}</th><th class="n">Laterales${anexo ? '' : ' +/−'}</th><th class="n">Fuerza horizontal del nivel [kgf]</th></tr></thead><tbody>
+    ${d.niveles.map((lv) => `<tr><td>${lv.k}</td><td class="n">${fm(lv.z0)}–${fm(lv.z1)}</td>${['barl', 'sot', 'lat'].map((f) => `<td class="n">${anexo ? P(lv[f].pos) : `${P(lv[f].pos)} / ${P(lv[f].neg)}`}</td>`).join('')}<td class="n">${nf(kgf(lv.Fh), 0)}</td></tr>`).join('')}
     </tbody></table></div><p class="note">${anexo ? `Anexo A: C = +0,70 barlovento, −0,60 sotavento y laterales; p = pz·C, sin presión interna.` : `Cap. 6: Cp = 0,8 barlovento (qz al tope de cada nivel), ${nf(d.CpLee, 2)} sotavento (L/B = ${nf(d.LB, 2)}), −0,7 laterales, con qh; ±GCpi = ${nf(g.GCpi, 2)}.`} Valores en ${u.u}. Mínimo 0,25 kN/m² en muros (6.1.5).</p></div>`).join('');
-  const pill = (fs) => `<span class="pill ${fs >= FSmin ? 'ok' : 'bad'}">${fs >= FSmin ? 'CUMPLE' : 'NO CUMPLE'}</span>`;
-  const fsTxt = (fs) => isFinite(fs) ? nf(fs, 2) : '∞';
+  // Reacciones en apoyos / anclajes
+  const nom = radier ? 'anclaje' : 'apoyo';
   $('cRes').innerHTML = r.res.map((d) => `<div>
-    <h4 class="sub4">${d.dir === 'transversal' ? 'Viento sobre la cara larga' : 'Viento sobre la cara corta'} <span class="hint">B = ${nf(d.B, 2)} m · L = ${nf(d.L, 2)} m</span></h4>
+    <h4 class="sub4">${d.dir === 'transversal' ? 'Viento sobre la cara larga' : 'Viento sobre la cara corta'} <span class="hint">${d.nFilas} filas de ${d.nPorFila} ${nom}s en L = ${fm(d.L)} m</span></h4>
     <div class="tbl"><table>
-      <tr><td>Presión horizontal neta ${anexo ? 'pz·(C barl − C sot)' : 'qh·Kd·G·(Cp barl − Cp sot)'}</td><td class="n">${P(d.pNeta)} ${u.u}</td></tr>
-      <tr><td>Fuerza calculada / mínima 0,25 kN/m²</td><td class="n">${nf(kgf(d.Fcalc), 0)} / ${nf(kgf(d.Fmin), 0)} kgf</td></tr>
-      <tr><td>Fuerza horizontal F (gobierna)</td><td class="n">${nf(kgf(d.F), 0)} kgf</td></tr>
-      <tr><td>Fuerza en apoyos (1,3·qz·Kd·G·A, z = ${nf(r.zs, 2)} m)</td><td class="n">${nf(kgf(d.Fsup), 0)} kgf</td></tr>
-      <tr><td>Levantamiento del techo U</td><td class="n">${c.techo ? nf(kgf(d.U), 0) + ' kgf' : 'despreciado'}</td></tr>
-      <tr><td>Momento volcante Mo</td><td class="n">${nf(kgf(d.Mo), 0)} kgf·m</td></tr>
-      <tr><td>Momento resistente Mr = D·L/2</td><td class="n">${nf(kgf(d.Mr), 0)} kgf·m</td></tr>
-      <tr class="grp"><td colspan="2">Estabilidad sin anclajes (FS ≥ ${nf(FSmin, 2)})</td></tr>
-      <tr><td>Volcamiento Mr/Mo</td><td class="n">${fsTxt(d.FSv)} ${pill(d.FSv)}</td></tr>
-      <tr><td>Deslizamiento μ(D − U)/(F + Fap)</td><td class="n">${fsTxt(d.FSd)} ${pill(d.FSd)}</td></tr>
-      <tr class="grp"><td colspan="2">Anclajes (${nf(c.gD, 2)}D + ${nf(c.gW, 2)}W)</td></tr>
-      <tr><td>Tracción por anclaje (${c.anclajesLado} por lado)</td><td class="n">${nf(kgf(d.Tanc), 0)} kgf</td></tr>
-      <tr><td>Corte por anclaje (${2 * c.anclajesLado} anclajes, sin roce)</td><td class="n">${nf(kgf(d.Vanc), 0)} kgf</td></tr>
+      <tr><td>Fuerza horizontal F (calculada / mínima 0,25 kN/m²)</td><td class="n">${nf(kgf(d.F), 0)} kgf <span class="sub">(${nf(kgf(d.Fcalc), 0)} / ${nf(kgf(d.Fmin), 0)})</span></td></tr>
+      ${radier ? '' : `<tr><td>Fuerza en apoyos (1,3·qz·Kd·G·A, z = ${nf(r.zs, 2)} m)</td><td class="n">${nf(kgf(d.Fsup), 0)} kgf</td></tr>`}
+      <tr><td>Levantamiento del techo U</td><td class="n">${c.techo ? nf(kgf(d.U), 0) + ' kgf' : 'no incluido'}</td></tr>
+      <tr><td>Momento volcante en la base Mo</td><td class="n">${nf(kgf(d.Mo), 0)} kgf·m</td></tr>
+      <tr class="grp"><td colspan="2">Por ${nom}</td></tr>
+      <tr><td>Tracción, fila de barlovento (${nf(c.gD, 2)}D + ${nf(c.gW, 2)}W)</td><td class="n">${d.Tanc > 0 ? nf(kgf(d.Tanc), 0) + ' kgf' : '<span class="note">sin tracción: el peso equilibra</span>'}</td></tr>
+      <tr><td>Compresión máx., fila de sotavento (D + W, servicio)</td><td class="n">${nf(kgf(d.Cap), 0)} kgf</td></tr>
+      <tr><td>Corte (${nf(c.gW, 2)}W repartido en ${r.nTot} ${nom}s, sin roce)</td><td class="n">${nf(kgf(d.Vanc), 0)} kgf</td></tr>
+    </table></div></div>`).join('');
+  // Simplemente apoyado: solo tiene sentido sobre apoyos (el radier es fijo por definición)
+  $('cSinBox').hidden = radier;
+  $('cSinPar').hidden = !S.cSinAnc;
+  const pill = (fs) => !isFinite(fs) ? '<span class="pill ok">no hay volcamiento</span>' : `<span class="pill ${fs >= FSmin ? 'ok' : 'bad'}">${fs >= FSmin ? 'CUMPLE' : 'NO CUMPLE'}</span>`;
+  const fsTxt = (fs) => isFinite(fs) ? nf(fs, 2) : '';
+  $('cSin').innerHTML = radier || !S.cSinAnc ? '' : r.res.map((d) => `<div><h4 class="sub4">${d.dir === 'transversal' ? 'Cara larga' : 'Cara corta'} · sin anclajes <span class="hint">FS ≥ ${nf(FSmin, 2)}</span></h4>
+    <div class="tbl"><table>
+      <tr><td>Volcamiento Mr/Mo (Mr = D·L/2 = ${nf(kgf(d.Mr), 0)} kgf·m)</td><td class="n">${fsTxt(d.FSv)} ${pill(d.FSv)}</td></tr>
+      <tr><td>Deslizamiento μ(D − U)/F${radier ? '' : ' total'}</td><td class="n">${d.U >= r.pesoN ? '<span class="pill bad">el techo levanta el módulo</span>' : `${fsTxt(d.FSd)} ${pill(d.FSd)}`}</td></tr>
     </table></div></div>`).join('');
 }
+$('cFigTabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-cv]'); if (!b) return; [S.cDir, S.cSg] = b.dataset.cv.split('|'); save(); render(); });
 
 /* ---------------- TECHUMBRE ---------------- */
 function renderTecho(g) {

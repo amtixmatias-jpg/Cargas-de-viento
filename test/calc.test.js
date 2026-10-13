@@ -170,3 +170,19 @@ console.log('OK – todas las verificaciones pasaron');
   near(n2[0].X.Mz, n2[0].X.F * 0.15 * e.total, 1e-6, 'Mz = F e');
   console.log('OK – caso 3 y torsión por nivel');
 }
+
+// ---- Contenedor: radier / apoyos puntuales y reacciones por fila ----
+{
+  const base = { largo: 6.06, ancho: 2.44, alto: 2.59, niveles: 2, hApoyo: 0.6, peso: 2400, mu: 0.4, gD: 0.9, gW: 1.6, techo: true };
+  const r2 = N.contenedor(g, Object.assign({}, base, { apoyo: 'apoyos', nL: 2, nB: 2, aAp: 0.2 }));
+  const d = r2.res[0];
+  // con 2 filas coincide con el equilibrio respecto al borde de sotavento
+  near(d.Tline, Math.max(0, (1.6 * d.Mo - 0.9 * d.Mr) / d.L), 1e-6, 'tracción 2 filas');
+  near(r2.Aap, 4 * 0.2 * 0.6, 1e-12, 'área de apoyos');
+  const r3 = N.contenedor(g, Object.assign({}, base, { apoyo: 'apoyos', nL: 3, nB: 3, aAp: 0.2 }));
+  assert.ok(r3.res[0].Tline >= d.Tline - 1e-9, 'fila intermedia no reduce la tracción de borde');
+  near(r3.res[0].Vanc * 9, 1.6 * (r3.res[0].F + r3.res[0].Fsup), 1e-6, 'corte repartido');
+  const rr = N.contenedor(g, Object.assign({}, base, { apoyo: 'radier', nL: 2, nB: 2 }));
+  assert.strictEqual(rr.hAp, 0); assert.strictEqual(rr.res[0].Fsup, 0);
+  console.log('OK – contenedor radier / apoyos');
+}

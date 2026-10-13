@@ -1131,19 +1131,30 @@
    * Carga mínima: 0,25 kN/m² sobre el área de muro (§6.1.5).
    */
   function contenedor(g, c) {
+    // Tipo de apoyo: 'radier' (fijo sobre radier, anclado) o 'apoyos' (sobre apoyos puntuales: poyos, dados, pilotes).
+    const radier = c.apoyo === 'radier';
+    const hAp = radier ? 0 : Math.max(0, +c.hApoyo || 0);
+    const nL = Math.max(2, Math.round(c.nL != null ? +c.nL : (+c.anclajesLado || 2)));
+    const nB = Math.max(2, Math.round(c.nB != null ? +c.nB : 2));
+    const nTot = nL * nB;
+    // Área expuesta de apoyos: todos los apoyos sin apantallamiento (conservador), o el área dada por cara.
+    const Aap = radier || hAp <= 0 ? 0 : (c.aAp != null ? nTot * (+c.aAp) * hAp : (+c.Asup || 0));
     const H = c.alto * c.niveles;
-    const h = c.hApoyo + H;
+    const h = hAp + H;
     const anexo = c.metodo === 'anexoA';
     const kz = Kz(h, g.exp, g.kzMetodo);
     const qh = anexo ? g.p0 * kz : qz(g, h).q;
     const Kd = g.Kd, G = g.G, GCpi = g.GCpi;
     const pesoN = c.peso * c.niveles * G_ACC;
-    const zs = c.hApoyo + 0.25 * (h - c.hApoyo);
+    const zs = hAp + 0.25 * (h - hAp);
     const qs = qz(g, zs).q;
     const res = [];
     for (const dir of ['transversal', 'longitudinal']) {
       const B = dir === 'transversal' ? c.largo : c.ancho;
       const L = dir === 'transversal' ? c.ancho : c.largo;
+      // filas de apoyos/anclajes paralelas a la cara expuesta (se reparten en la profundidad L)
+      const nFilas = dir === 'transversal' ? nB : nL;
+      const nPorFila = dir === 'transversal' ? nL : nB;
       const hL = h / L, LB = L / B;
       const CpLee = anexo ? -0.6 : CpSotavento(LB);
       const CpW = anexo ? 0.7 : 0.8;
@@ -1152,36 +1163,41 @@
       const Fcalc = pNeta * Aface;
       const Fmin = 250 * Aface;
       const F = Math.max(Fcalc, Fmin);
-      const brazoF = c.hApoyo + H / 2;
-      const Fsup = c.hApoyo > 0 ? qs * Kd * G * 1.3 * (+c.Asup || 0) : 0;
-      const brazoSup = c.hApoyo / 2;
-      let tramos = [], U = 0, MU = 0;
+      const brazoF = hAp + H / 2;
+      const Fsup = Aap > 0 ? qs * Kd * G * 1.3 * Aap : 0;
+      const brazoSup = hAp / 2;
+      let tramos = [], U = 0, MU = 0, MUc = 0;
+      const sumaTramo = (up, t) => { const xm = (t.x0 + t.x1) / 2; U += up; MU += up * (L - xm); MUc += up * (L / 2 - xm); };
       if (c.techo === false) {
         // techo despreciado: sin levantamiento
       } else if (anexo) {
         tramos = [{ x0: 0, x1: L, Cp: -0.85 }]; // Fig. A.2, θ = 0: caso 1A en succión
-        for (const t of tramos) { const up = -qh * t.Cp * (t.x1 - t.x0) * B; U += up; MU += up * (L - (t.x0 + t.x1) / 2); }
+        for (const t of tramos) sumaTramo(-qh * t.Cp * (t.x1 - t.x0) * B, t);
       } else {
         tramos = zonasTecho(L, h, hL);
-        for (const t of tramos) {
-          const pz_ = qh * Kd * (G * t.Cp - GCpi);
-          const up = -pz_ * (t.x1 - t.x0) * B;
-          U += up; MU += up * (L - (t.x0 + t.x1) / 2);
-        }
+        for (const t of tramos) sumaTramo(-qh * Kd * (G * t.Cp - GCpi) * (t.x1 - t.x0) * B, t);
       }
-      const Mo = F * brazoF + Fsup * brazoSup + MU;
+      const Mh = F * brazoF + Fsup * brazoSup;      // momento de las fuerzas horizontales a nivel de anclaje
+      const Mo = Mh + MU;                           // volcante respecto al borde de sotavento
       const Mr = pesoN * L / 2;
       const Ft = F + Fsup;
       const FSv = Mo > 0 ? Mr / Mo : Infinity;
       const FSd = Ft > 0 ? (c.mu * Math.max(0, pesoN - U)) / Ft : Infinity;
       const FSu = U > 0 ? pesoN / U : Infinity;
-      const Tline = Math.max(0, (c.gW * Mo - c.gD * Mr) / L);
-      const Tanc = Tline / c.anclajesLado;
-      const Vanc = (c.gW * Ft) / (2 * c.anclajesLado);
+      // Reacciones en filas equiespaciadas (cuerpo rígido, distribución lineal respecto al centroide)
+      const xs = []; for (let i = 0; i < nFilas; i++) xs.push(-L / 2 + i * L / (nFilas - 1));
+      const Ix = xs.reduce((s_, x) => s_ + x * x, 0);
+      const Mc = Mh + MUc;
+      const filaBarl = (fD, fW) => (fD * pesoN - fW * U) / nFilas - fW * Mc * (L / 2) / Ix;   // + compresión
+      const filaSot = (fD, fW) => (fD * pesoN - fW * U) / nFilas + fW * Mc * (L / 2) / Ix;
+      const Tline = Math.max(0, -filaBarl(c.gD, c.gW));
+      const Tanc = Tline / nPorFila;
+      const Vanc = (c.gW * Ft) / nTot;
+      const Cap = Math.max(0, filaSot(1, 1)) / nPorFila;   // compresión máx. por apoyo en servicio (D + W)
       // Presiones en las caras por nivel (costados). Cap. 6: barlovento con qz al tope de cada nivel.
       const niveles = [];
       for (let k = 1; k <= c.niveles; k++) {
-        const z0 = c.hApoyo + (k - 1) * c.alto, z1 = c.hApoyo + k * c.alto;
+        const z0 = hAp + (k - 1) * c.alto, z1 = hAp + k * c.alto;
         const qW = anexo ? qh : qz(g, z1).q;
         const pi = anexo ? 0 : qh * Kd * GCpi;
         const ext = (q, Cp) => anexo ? q * Cp : q * Kd * G * Cp;
@@ -1189,7 +1205,7 @@
         const barl = cara(qW, CpW), sot = cara(qh, CpLee), lat = cara(qh, anexo ? -0.6 : -0.7);
         niveles.push({ k, z0, z1, qW, barl, sot, lat, Fh: (ext(qW, CpW) - ext(qh, CpLee)) * B * c.alto });
       }
-      res.push({ dir, B, L, hL, LB, CpW, CpLee, pNeta, Aface, Fcalc, Fmin, F, Fsup, brazoF, U, MU, Mo, Mr, FSv, FSd, FSu, Tline, Tanc, Vanc, tramos, niveles });
+      res.push({ dir, B, L, hL, LB, CpW, CpLee, pNeta, Aface, Fcalc, Fmin, F, Fsup, brazoF, U, MU, Mo, Mr, FSv, FSd, FSu, Tline, Tanc, Vanc, Cap, nFilas, nPorFila, tramos, niveles });
     }
     const checksA = [
       { ok: g.cat === 'I' || g.cat === 'II', txt: 'Categoría I o II' },
@@ -1198,7 +1214,7 @@
       { ok: c.largo * c.ancho < 500, txt: 'Planta < 500 m²' },
       { ok: !g.topo, txt: 'Sin efectos topográficos' },
     ];
-    return { H, h, Kh: kz, qh, zs, qs, pesoN, res, metodo: anexo ? 'anexoA' : 'cap6', checksA };
+    return { H, h, hAp, radier, nL, nB, nTot, Aap, Kh: kz, qh, zs, qs, pesoN, res, metodo: anexo ? 'anexoA' : 'cap6', checksA };
   }
 
   /* ================= Techumbre específica (para artefacto de cerchas) ================= */
