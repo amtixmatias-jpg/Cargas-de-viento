@@ -39,3 +39,9 @@ Parámetros generales (columna izquierda): zona, V y p0 (Tabla 1), I (Tabla 2), 
 ```
 node test/calc.test.js
 ```
+
+## Identidad gráfica
+
+Interfaz según la guía de M2 Ingeniería Civil: logo (`assets/logo-m2.png`, incrustado en la página, el favicon y la ficha), paleta naranja/azul marino con modo oscuro automático, tipografías Poppins, Open Sans e IBM Plex Mono.
+
+© 2026 · Propiedad de Matías Muñoz Leal y M2 Ingeniería Civil. Todos los derechos reservados.
