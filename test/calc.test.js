@@ -186,3 +186,52 @@ console.log('OK – todas las verificaciones pasaron');
   assert.strictEqual(rr.hAp, 0); assert.strictEqual(rr.res[0].Fsup, 0);
   console.log('OK – contenedor radier / apoyos');
 }
+
+// ---- Galpón una agua: h_baja / h_alta, carga mínima 6.1.5 y torsión (caso de prueba) ----
+{
+  const gg = { V: 37, I: 1, Kd: 0.85, Kzt: 1, Ke: 1, exp: 'C', kzMetodo: 'tabla', G: 0.85, GCpi: 0.18, cerramiento: 'cerrado' };
+  const kgf = (x) => x / N.G_ACC;
+  const geo = { largo: 12, ancho: 12, hAlero: 2.9, hAlta: 3.6, tipoTecho: 'una', ejesY: [0, 4, 8, 12], ejesX: [0, 12] };
+  const r = N.galponSAP(gg, geo);
+  near(r.theta, 3.338, 5e-4, 'θ'); near(r.h, 3.25, 1e-12, 'h_ref = h_media'); near(r.Kh, 0.87, 1e-9, 'Kh');
+  near(kgf(r.qh), 74.4, 0.05, 'qh'); near(kgf(r.qh * gg.Kd), 63.3, 0.05, 'qh·Kd'); near(r.hLx, 0.271, 5e-4, 'h/L');
+  const c = r.casos.find((x) => x.sap === 'WXP_1'), cn = r.casos.find((x) => x.sap === 'WXP_2');
+  const m = (cc, sup) => kgf(cc.muros.find((q) => q.sup === sup).p);
+  near(m(c, 'Muro X−'), 31.6, 0.05, 'barl +'); near(m(cn, 'Muro X−'), 54.4, 0.05, 'barl −');
+  near(m(c, 'Muro X+'), -38.3, 0.05, 'sot +'); near(m(cn, 'Muro X+'), -15.5, 0.05, 'sot −');
+  near(m(c, 'Frontón Y−'), -49.0, 0.06, 'lat +'); near(m(cn, 'Frontón Y−'), -26.3, 0.05, 'lat −');
+  const tz = c.techo.map((t) => [t.a, t.b, kgf(t.p)]);
+  assert.strictEqual(tz.length, 3, 'tres tramos de techo');
+  near(tz[0][1], 3.25, 1e-9, 'tramo 1'); near(tz[0][2], -59.8, 0.05, 'techo 0–h'); near(tz[1][2], -38.3, 0.05, 'techo h–2h'); near(tz[2][2], -27.5, 0.05, 'techo > 2h');
+  const alt = r.casos.find((x) => x.dir === 'X' && x.sentido > 0 && x.variante.id === 'A' && x.gcpi < 0);
+  near(kgf(alt.techo[0].p), 1.7, 0.05, 'alternativo −GCpi');
+  const altP = r.casos.find((x) => x.dir === 'X' && x.sentido > 0 && x.variante.id === 'A' && x.gcpi > 0);
+  near(kgf(altP.techo[0].p), -21.1, 0.05, 'alternativo +GCpi = 63,3·(0,85·(−0,18) − 0,18)');
+  // −WX: franjas desde la fachada alta, barlovento con qz(h_alta)
+  const cN = r.casos.find((x) => x.sap === 'WXN_1');
+  assert.ok(cN.techo[cN.techo.length - 1].b === 12 && Math.abs(cN.techo[cN.techo.length - 1].a - 8.75) < 1e-9, 'franja desde fachada alta');
+  // 6.1.5
+  near(kgf(r.minimo.XP.Fm), 887, 0.5, 'mín muro X bajo'); near(kgf(r.minimo.XP.Ft), 111, 0.5, 'mín techo X bajo'); near(kgf(r.minimo.XP.F), 999, 0.5, 'mín X bajo');
+  near(kgf(r.minimo.XN.F), 1101, 0.5, 'mín X alto'); assert.strictEqual(r.minimo.XN.At, 0);
+  near(kgf(r.minimo.Y.F), 994, 0.5, 'mín Y'); assert.strictEqual(r.minimo.Y.At, 0);
+  // torsión
+  const ex = N.exencionTorsion({ niveles: 1, hAlta: 3.6, diafragmaRigido: false });
+  assert.ok(ex.exenta && /un piso con h ≤ 9 m y cubierta sin diafragma rígido/.test(ex.texto));
+  assert.ok(!N.exencionTorsion({ niveles: 2, hAlta: 7, diafragmaRigido: true }).exenta);
+  const an = N.analisisGalpon(r, geo, { torsion: true });
+  const T = N.estadosTorsion(r, an.sel.map((x) => x.c), geo);
+  const t = T.c2.find((x) => x.sap === 'WXT_P_eP_1');
+  assert.ok(t, 'estado WXT_P_eP_1');
+  const w = (sup, mc) => kgf(N.cargaMuro(t.muros.find((q) => q.sup === sup), mc.a, mc.b) / mc.trib);
+  const M = r.marcos;
+  for (const i of [0, 1]) { near(w('Muro X−', M[i]), 1.2 * m(c, 'Muro X−'), 1e-9, 'barl torsión ejes 1–2'); near(w('Muro X−', M[i]), 37.97, 0.01, 'barl torsión (37,9 con p redondeado a 31,6)'); near(w('Muro X+', M[i]), 1.2 * m(c, 'Muro X+'), 1e-9, 'sot torsión ejes 1–2'); near(w('Muro X+', M[i]), -46.0, 0.1, 'sot torsión (−46,0 con p redondeado)'); }
+  for (const i of [2, 3]) { near(w('Muro X−', M[i]), 9.5, 0.05, 'barl torsión ejes 3–4'); near(w('Muro X+', M[i]), -11.5, 0.05, 'sot torsión ejes 3–4'); }
+  // ponderación por longitud si la franja cruza la línea media
+  near(N.cargaMuro({ p: 10, bloques: [{ a: 0, b: 5, f: 1.2 }, { a: 5, b: 10, f: 0.3 }] }, 4, 6), 10 * (1.2 + 0.3), 1e-12, 'franja cruza la línea media');
+  assert.ok(T.c4.length > 0 && T.c4.every((x) => x.muros.every((q) => q.bloques)));
+  // los frontones (laterales en WX) no van en los marcos
+  const d = N.cargasSAP(r, c, geo);
+  assert.ok(!d.filas.some((f) => /lateral/i.test(f.el)), 'sin muro lateral en marcos con WX');
+  near(kgf(d.pilFront.pilares[0].wYm), -49.0 * 6, 0.4, 'frontón: p × ancho tributario del pilar');
+  console.log('OK – galpón una agua, mínimo 6.1.5 y torsión');
+}

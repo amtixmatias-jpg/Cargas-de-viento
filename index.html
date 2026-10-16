@@ -76,7 +76,7 @@ nav.tabs button[aria-selected="true"] .nn { background: var(--brand); border-col
 .grid { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 16px; margin-top: 16px; align-items: start; }
 @media (max-width: 1040px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 aside.gen { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); counter-reset: paso; }
-aside.gen > header { padding: 14px 16px 12px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+aside.gen > header { padding: 14px 16px 12px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 8px; }
 aside.gen > header h2 { font-size: 16.5px; font-weight: 700; white-space: nowrap; }
 details.sec { border-bottom: 1px solid var(--line); counter-increment: paso; }
 details.sec:last-child { border-bottom: 0; }
@@ -244,6 +244,7 @@ footer.pie b { color: var(--ink); font-weight: 700; }
 <!-- =================== PARÁMETROS GENERALES =================== -->
 <aside class="gen" aria-label="Parámetros generales">
   <header><h2>Parámetros de entrada</h2><button class="btn ghost" type="button" id="reset">Restablecer ejemplo</button></header>
+  <div style="padding:12px 16px;border-bottom:1px solid var(--line)"><label class="f"><span>Proyecto (aparece en la ficha)</span><input type="text" id="proyecto" placeholder="Nombre del proyecto" autocomplete="off"></label></div>
 
   <details class="sec" open>
     <summary><span class="cl">5.3</span><span class="tt">Zona y velocidad básica</span><span class="rv" id="rvV"></span></summary>
@@ -358,14 +359,24 @@ footer.pie b { color: var(--ink); font-weight: 700; }
       <label class="chk" id="gF060Box" style="grid-column:span 2"><input type="checkbox" id="gF060"> Anexo A caso 2: usar +0,60 en muro frontal (esquema Fig. A.1) en vez de 0,7 (Tabla A.1)</label>
       <label class="f" style="grid-column:span 2"><span>Marcos (ejes 1, 2, 3…) · separaciones en Y [m]</span><input type="text" id="gEjesY" placeholder="5, 6*6.5, 5" autocomplete="off"></label>
       <label class="f" style="grid-column:span 2"><span>Ejes longitudinales (A, B, C…) · separaciones en X [m]</span><input type="text" id="gEjesX" placeholder="6.95, 6.95" autocomplete="off"></label>
-      <label class="f"><span>Altura alero [m]</span><input type="number" id="gAlero" step="0.1" min="0"></label>
       <label class="f"><span>Techo</span><select id="gTecho"><option value="dos">Dos aguas</option><option value="una">Una agua (sube hacia X+)</option><option value="plana">Plano</option></select></label>
-      <label class="f"><span>Inclinación θ [°]</span><input type="number" id="gTheta" step="0.5" min="0" max="89"></label>
+      <label class="f"><span id="gAleroLbl">Altura alero [m]</span><input type="number" id="gAlero" step="0.1" min="0"></label>
+      <label class="f" id="gHAltaBox"><span>h_alta · alero alto, eje X+ [m]</span><input type="number" id="gHAlta" step="0.05" min="0"></label>
+      <label class="f" id="gThetaBox"><span>Inclinación θ [°]</span><input type="number" id="gTheta" step="0.5" min="0" max="89"></label>
+      <label class="f" id="gHRefBox" style="grid-column:span 2"><span>Altura de referencia h_ref (Kh, qh, h/L y franjas de techo)</span><select id="gHRef"><option value="media">h_media = (h_baja + h_alta)/2 · definición 3.2</option><option value="alta">h_alta · conservador</option></select></label>
       <label class="chk" id="gRedBox"><input type="checkbox" id="gRed"> Reducir −1,3 por área (Fig. 4, nota b)</label>
-      <label class="chk" style="grid-column:span 2"><input type="checkbox" id="gDiaf"> Estructura con 2 o más niveles (diafragma por nivel): aplicar casos 2 y 4 de la Fig. 11 (torsión)</label>
-      <label class="f" id="gNivBox" style="grid-column:span 2"><span>Altura de cada nivel desde el suelo, de abajo hacia arriba [m]</span><input type="text" id="gNiveles" placeholder="3.5, 3.0" autocomplete="off"></label>
     </div>
     <p class="note" id="gEjesInfo" style="margin:10px 0 0"></p>
+  </div>
+  <div class="card">
+    <h3>Torsión · casos 2 y 4 de la Fig. 11 <span class="cl">6.3.5</span></h3>
+    <div class="row4">
+      <label class="chk" style="grid-column:span 2"><input type="checkbox" id="gDiaf"> Estructura de 2 o más pisos</label>
+      <label class="chk" style="grid-column:span 2"><input type="checkbox" id="gDiafRig"> Cubierta o entrepisos con diafragma rígido</label>
+      <label class="f" id="gNivBox" style="grid-column:span 2"><span>Altura de cada piso desde el suelo, de abajo hacia arriba [m]</span><input type="text" id="gNiveles" placeholder="3.5, 3.0" autocomplete="off"></label>
+      <label class="f" style="grid-column:span 2"><span>Casos 2 y 4</span><select id="gTorsion"><option value="eximir">Eximir con justificación</option><option value="aplicar">Aplicar (bloque de presión, nota 4)</option></select></label>
+    </div>
+    <p class="note" id="gTorInfo" style="margin:10px 0 0"></p>
   </div>
   <div class="stats" id="gStats"></div>
   <div class="card"><h3>Planta de la estructura</h3><div id="gPlanta"></div></div>
@@ -386,7 +397,7 @@ footer.pie b { color: var(--ink); font-weight: 700; }
     </div>
   </div>
   <details class="card fold gDiafSi"><summary>Casos de diseño de la Fig. 11 · tabla de combinaciones para el modelo 3D</summary><div class="foldbody">
-    <p class="note" style="margin-top:0">La norma (6.3.5) exige, además de cada estado por separado (caso 1), tres casos de diseño: caso 2, 75 % de un estado con torsión (excentricidad ±0,15B); caso 3, 75 % de un estado X y 75 % de un estado Y a la vez; caso 4, 56,3 % de ambos con torsión. Esto no es el criterio para elegir los estados: son combinaciones que se arman en SAP con los estados de análisis.</p>
+    <p class="note" style="margin-top:0">La norma (6.3.5) exige, además de cada estado por separado (caso 1), tres casos de diseño: caso 2, un estado con torsión (bloque 1,20·p / 0,30·p, ≡ 0,75·p con e = ±0,15B); caso 3, 75 % de un estado X y 75 % de un estado Y a la vez; caso 4, ambos con torsión (0,90·p / 0,225·p). Los casos 2 y 4 sólo si no se eximen (tarjeta Torsión). Esto no es el criterio para elegir los estados: son combinaciones que se arman en SAP con los estados de análisis.</p>
     <div class="act-row"><button class="btn" type="button" data-copy="gAnaC">Copiar tabla</button></div>
     <div class="tbl"><table id="gAnaC"></table></div>
     <p class="note" id="gAnaNota"></p>
@@ -421,7 +432,7 @@ footer.pie b { color: var(--ink); font-weight: 700; }
   <div class="card" id="gPerfilCard">
     <h3><span class="cl">5.8</span> Muro de barlovento · presión en altura (Cp = 0,8, con qz)</h3>
     <div class="tbl"><table id="gPerfil"></table></div>
-    <p class="note">Los patrones usan qh en toda la altura del muro de barlovento (conservador). Si modela la variación con la altura, use esta tabla.</p>
+    <p class="note" id="gPerfilNota">Los patrones usan qh en toda la altura del muro de barlovento (conservador). Si modela la variación con la altura, use esta tabla.</p>
   </div>
     </div>
   </details>
@@ -595,7 +606,7 @@ const DEFAULTS = {
   topo: false, topoForma: 'escarpe2d', topoH: 20, topoLh: 60, topoX: 0, topoZ: 5, topoSentido: 'favor',
   ze: 0, keMetodo: 'formula', G: 0.85,
   cerr: 'cerrado', Ao: 0, Ag: 200, Aoi: 0, Agi: 800, ab80: false, Aog: 0, Vi: 0,
-  gLargo: 51.8, gAncho: 13.9, gAlero: 6.4, gTecho: 'dos', gTheta: 10, gMetodo: 'cap6', gF060: false, gDiaf: false, gNiveles: '3.5, 3.0', gFig: '1', gC3: '0', gEjesY: '5.2, 6*6.9, 5.2', gEjesX: '6.95, 6.95', gVista: 'WXP_1', gRed: false, gMarco: 2, gCaso: 'WXP_1',
+  gLargo: 51.8, gAncho: 13.9, gAlero: 6.4, gTecho: 'dos', gTheta: 10, gMetodo: 'cap6', gF060: false, gDiaf: false, gDiafRig: false, gTorsion: 'eximir', gHAlta: 0, gHRef: 'media', gT2: '', gT4: '', gNiveles: '3.5, 3.0', gFig: '1', gC3: '0', gEjesY: '5.2, 6*6.9, 5.2', gEjesX: '6.95, 6.95', gVista: 'WXP_1', gRed: false, gMarco: 2, gCaso: 'WXP_1',
   sMetodo: 'anexoA', sF060: false, sVista: 'WXP_1', sH: 2.4, sSep: 0.6, sLargo: 14, sAncho: 8, sAlero: 2.6, sTecho: 'dos', sTheta: 20, sTrib: 1, sKd: true,
   cTipo: '20', cLargo: 6.06, cAncho: 2.44, cAlto: 2.59, cNiv: 1, cApoyo: 0.3, cPeso: 2400, cMetodo: 'cap6', cDir: 'transversal', cSg: '1', cTecho: false, cApoyoT: 'apoyos', cNl: 2, cNb: 2, cAap: 0.2, cSinAnc: false, cMu: 0.4, cFS: 1.5, cGD: 0.9, cGW: 1.6,
   tMetodo: 'cap6', tLuz: 10, tLargo: 30, tAlero: 3.5, tTecho: 'dos', tTheta: 15, tDir: 'normal', tX: 0,
@@ -628,9 +639,16 @@ function toUI() {
 }
 function fromUI(e) {
   const el = e.target; const k = el.id; if (!(k in DEFAULTS)) return;
-  S[k] = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? (el.value === '' ? 0 : +el.value) : el.value);
+  const v = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? (el.value === '' ? 0 : +el.value) : el.value);
+  // 'change' tras 'input' no cambia nada: no se vuelve a dibujar (evita perder el clic que provocó el blur)
+  if (e.type === 'change' && el.type !== 'checkbox' && el.tagName !== 'SELECT' && S[k] === v) return;
+  S[k] = v;
   if (k === 'cTipo' && CONT[S.cTipo]) { [S.cLargo, S.cAncho, S.cAlto, S.cPeso] = CONT[S.cTipo]; toUI(); }
   if (['cLargo', 'cAncho', 'cAlto'].includes(k)) { S.cTipo = 'custom'; $('cTipo').value = 'custom'; }
+  if (k === 'gTecho' && S.gTecho === 'una' && !(+S.gHAlta > +S.gAlero)) {
+    const an = N.parseEjes(S.gEjesX).total || 1;
+    S.gHAlta = Math.round((+S.gAlero + an * Math.tan((+S.gTheta || 5) * Math.PI / 180)) * 100) / 100; $('gHAlta').value = S.gHAlta;
+  }
   save(); render();
 }
 document.addEventListener('input', fromUI);
@@ -680,11 +698,13 @@ td.n, th.n, .n { text-align: right; font-variant-numeric: tabular-nums; }
 .note, p { font-size: 7.4pt; color: #33475a; margin: .4mm 0; }
 .sub { color: var(--muted); font-size: 7pt; }
 .pP { color: var(--pres); } .pS { color: var(--succ); }
+.adv { color: #8a5a00; font-weight: 600; }
 .pill { display: inline-block; font-size: 6.5pt; font-weight: 600; border: 1px solid currentColor; border-radius: 8px; padding: 0 4px; margin: 0 1px 1px 0; }
 .cl { font-family: "IBM Plex Mono", monospace; font-size: 6.8pt; color: var(--muted); }
 .hint { color: var(--muted); font-size: 7pt; font-weight: 400; }
 .pill.ok { color: var(--ok); } .pill.bad { color: var(--bad); }
 svg { width: 100%; height: auto; max-height: 66mm; display: block; margin: 0 auto; }
+.figS svg { max-height: 50mm; }
 .fig2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2mm 4mm; }
 .fig2 svg { max-height: 74mm; }
 .fig2 .note { margin: 0; }
@@ -721,31 +741,41 @@ function fichaBases(g) {
     ['Ke (5.7)', `${nf(g.Ke, 3)} · ze = ${nf(+S.ze, 0)} msnm`], ['G (5.9)', `${nf(g.G, 2)} (rígida)`], ['Cerramiento / GCpi (Tabla 7)', `${g.cerrObj.nombre} · ±${nf(g.GCpi, 2)}`],
   ];
   return `<div class="kv">${kv.map(([a, b]) => `<div><b>${a}</b>${b}</div>`).join('')}</div>
-    <p class="note">Presión de velocidad: q(z) = 0,613·I·Kz·Kzt·Ke·V² [N/m²] (Ec. 2). Unidades del reporte: ${u.u} (presiones) y ${u.ul} (cargas lineales). Signo +: presión hacia la superficie; −: succión.</p>`;
+    <p class="note">Presión de velocidad: q(z) = 0,613·I·Kz·Kzt·Ke·V² [N/m²] (Ec. 2). Unidades del reporte: ${u.u} (presiones) y ${u.ul} (cargas lineales). Signo +: presión hacia la superficie; −: succión.</p>
+    <p class="note adv">⚠ Exposición adoptada: verificar rugosidad a barlovento (5.5.3).<br>⚠ Cerramiento adoptado: si con portones abiertos resulta parcialmente cerrado, GCpi = ±0,55 (Tabla 7).</p>`;
 }
 function fichaStats(id) {
   const el = $(id); if (!el) return '';
   return `<div class="kv">${[...el.querySelectorAll('.stat')].map((st) => `<div><b>${st.querySelector('.lbl').textContent}</b>${st.querySelector('.v').textContent} ${st.querySelector('.u') ? st.querySelector('.u').textContent : ''}</div>`).join('')}</div>`;
 }
 const leyFicha = '<div class="legend"><span><i style="background:var(--pres)"></i>presión (+), hacia la superficie</span><span><i style="background:var(--succ)"></i>succión (−), alejándose</span></div>';
+function geoTxtFicha() {
+  const { geo } = geoGalpon();
+  if (S.gMetodo === 'anexoA') return S.gTecho === 'una' ? `Una agua: h_baja = ${fm(geo.hAlero)} m, h_alta = ${fm(geo.hAlta)} m, θ = ${nf(geo.theta, 2)}°; Anexo A con z = h_media = ${fm((geo.hAlero + geo.hAlta) / 2)} m (Nota 2).` : '';
+  const gt = N.geoTecho(geo);
+  return gt.una
+    ? `Una agua: h_baja = ${fm(gt.hBaja)} m · h_alta = ${fm(gt.hAlta)} m · h_media = ${fm(gt.hMedia)} m · <b>h_ref = ${fm(gt.h)} m</b> (${gt.criterio}) · θ = atan((h_alta − h_baja)/L_pend) = ${nf(gt.th, 2)}°. Muro de barlovento con qz en su altura superior (h_baja con +WX, h_alta con −WX); frontones con qz(h_alta). h/L: WX con L = L_pend, WY con L = B.`
+    : `Altura de referencia h = ${fm(gt.h)} m (${gt.criterio}); alero ${fm(gt.hBaja)} m, cumbrera ${fm(gt.hAlta)} m.`;
+}
 function fichaHTML() {
   const g = general();
   render();
-  const proyecto = S.proyecto || 'Proyecto sin nombre';
+  const proyecto = (S.proyecto || '').trim();
   const fecha = new Date().toLocaleDateString('es-CL');
   const titulos = { galpon: 'Galpón', simple: 'Edificio bajo', cont: 'Contenedor', techo: 'Techumbre' };
-  const cab = (n) => `<header class="fh"><div class="lg"><img src="${$('logoM2').src}" alt="M2"><div><div class="emp">M2 Ingeniería Civil</div><h1>Cargas de viento · ${titulos[tab]}</h1><div class="sub">${proyecto}</div></div></div><div class="m">NCh 432:2025<br>${fecha} · hoja ${n} de 2</div></header>`;
+  const cab = (n) => `<header class="fh"><div class="lg"><img src="${$('logoM2').src}" alt="M2"><div><div class="emp">M2 Ingeniería Civil</div><h1>Cargas de viento · ${titulos[tab]}</h1>${proyecto ? `<div class="sub">${proyecto}</div>` : ''}</div></div><div class="m">NCh 432:2025<br>${fecha} · hoja ${n} de 2</div></header>`;
   const pie = `<footer class="ff"><span>Viento NCh 432 · ficha de cálculo simplificada</span><span>${proyecto}</span><b>© 2026 · Propiedad de Matías Muñoz Leal y M2 Ingeniería Civil. Todos los derechos reservados.</b></footer>`;
   let p1 = '', p2 = '';
   if (tab === 'galpon') {
     const c = $('gVista').value;
     p1 = `<h2>Bases de cálculo</h2>${fichaBases(g)}
-      <h2>Geometría y criterio</h2><p>${$('gEjesInfo').innerHTML.replace(/\s*Escriba separaciones[\s\S]*$/, '')}</p><p>Método: ${$('gTit').textContent}. ${$('gIntro').textContent}</p>${fichaStats('gStats')}
-      <h2>Coeficientes</h2>${fichaClonar('gTraza', '.tbl + .tbl, .tbl:nth-of-type(n+2)')}
+      <h2>Geometría y criterio</h2><p>${$('gEjesInfo').innerHTML.replace(/\s*Escriba separaciones[\s\S]*$/, '')}</p><p>${geoTxtFicha()}</p><p>Método: ${$('gTit').textContent}. ${$('gIntro').textContent}</p>${fichaStats('gStats')}
+      <h2>Coeficientes</h2>${fichaClonar('gTraza', '.tbl + .tbl, .tbl:nth-of-type(n+2), p.note:first-child')}
       <h2>Estados de análisis</h2><p class="note">${$('gAnaRes').textContent}</p>${fichaClonar('gAnaT', 'th:last-child, td:last-child')}`;
-    p2 = `<h2>Disposición de cargas · estado ${c}</h2><p class="note">${$('gVistaDesc').textContent}</p><div class="fig">${$('gVP').innerHTML}${$('gVS').innerHTML}${leyFicha}</div>
-      <h2>Cargas para SAP · estado ${c}</h2>${fichaClonar('gSap', 'h4')}
-      <h2>Casos de diseño Fig. 11 (6.3.5)</h2><p>Caso 1: cada estado por separado (100 %). Caso 3: 0,75·muros de un estado X + 0,75·muros de un estado Y simultáneos, techo al 100 % del mayor valor del caso 1. Casos 2 y 4 (torsión sobre diafragma por nivel): ${S.gDiaf ? 'aplican; niveles ' + S.gNiveles + ' m.' : 'no aplican, estructura sin niveles con diafragma.'}</p>${fichaClonar('gFig11')}`;
+    p2 = `<h2>Disposición de cargas · estado ${c}</h2><p class="note">${$('gVistaDesc').textContent}</p><div class="fig figS">${$('gVP').innerHTML}${$('gVS').innerHTML}${leyFicha}</div>
+      <h2>Cargas para SAP · estado ${c}</h2>${fichaClonar('gSap', 'h4, p.note')}<p class="note">Frontones: sólo pilares de los ejes extremos, carga = p × ancho tributario a lo largo del frontón.</p>
+      <h2>Casos de diseño Fig. 11 (6.3.5)</h2><p>Caso 1: cada estado por separado (100 %). Caso 3: 0,75·muros de un estado X + 0,75·muros de un estado Y simultáneos, techo al 100 % del mayor valor del caso 1.</p>
+      <p>${TOR.aplica ? `Casos 2 y 4 aplicados (nota 4, bloque de presión distribuido): caso 2, muros normales al viento 1,20·p en la mitad alta de B y 0,30·p en la otra (≡ 0,75·p + MT con e = 0,15B), laterales 0,75·p, techo 0,75; caso 4, X e Y simultáneos con 0,90·p / 0,225·p y techo al 100 % del mayor techo del caso 2. Estados: ${TOR.T.c2.length} de caso 2 (WXT_…, WYT_…) y ${TOR.T.c4.length} de caso 4 (W4_…), ver programa.` : TOR.ex.texto}</p>${fichaClonar('gFig11', 'p.note:last-child')}`;
   } else if (tab === 'simple') {
     const anexo = S.sMetodo !== 'cap7';
     p1 = `<h2>Bases de cálculo</h2>${fichaBases(g)}
@@ -776,7 +806,9 @@ function fichaHTML() {
     <section class="pag">${cab(1)}${p1}${pie}</section><section class="pag">${cab(2)}${p2}${pie}</section></body></html>`;
 }
 let fichaTxt = '';
+let TOR = { aplica: false, ex: { texto: '' }, T: { c2: [], c4: [] } };
 $('bFicha').onclick = () => {
+  if (!(S.proyecto || '').trim()) { const el = $('proyecto'); el.focus(); el.closest('details') && (el.closest('details').open = true); toast('Ingrese el nombre del proyecto para la ficha'); return; }
   fichaTxt = fichaHTML();
   $('dFichaFrame').srcdoc = fichaTxt;
   $('dFichaTxt').textContent = 'Pestaña ' + ({ galpon: 'Galpón', simple: 'Edificio bajo', cont: 'Contenedor', techo: 'Techumbre' })[tab] + ' · A4, 2 hojas';
@@ -848,7 +880,7 @@ document.addEventListener('click', (e) => { const b = e.target.closest('[data-c3
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-est]'); if (!b) return; S.gVista = b.dataset.est; save(); render(); });
 $('bGuardar').onclick = () => { $('dNombre').value = S.proyecto || ''; abrirDialogo('guardar'); };
 $('bAbrir').onclick = () => abrirDialogo('abrir');
-$('dNombre').addEventListener('input', () => { S.proyecto = $('dNombre').value; save(); $('dJson').value = textoProyecto(); });
+$('dNombre').addEventListener('input', () => { S.proyecto = $('dNombre').value; $('proyecto').value = S.proyecto; save(); $('dJson').value = textoProyecto(); });
 $('dAccion').onclick = () => {
   if (dModo === 'guardar') {
     const n = ($('dNombre').value || 'proyecto').trim().replace(/[^\w\-áéíóúñÁÉÍÓÚÑ ]+/g, '').replace(/\s+/g, '_') || 'proyecto';
@@ -1000,8 +1032,14 @@ function tramoTxt(t) {
 }
 function geoGalpon() {
   const ey = N.parseEjes(S.gEjesY), ex = N.parseEjes(S.gEjesX);
-  return { ey, ex, geo: { largo: ey.total || 1, ancho: ex.total || 1, hAlero: +S.gAlero, tipoTecho: S.gTecho, theta: +S.gTheta,
-    redArea: !!S.gRed, ejesY: ey.pos.length > 1 ? ey.pos : null, ejesX: ex.pos.length > 1 ? ex.pos : null } };
+  const geo = { largo: ey.total || 1, ancho: ex.total || 1, hAlero: +S.gAlero, tipoTecho: S.gTecho, theta: +S.gTheta,
+    redArea: !!S.gRed, ejesY: ey.pos.length > 1 ? ey.pos : null, ejesX: ex.pos.length > 1 ? ex.pos : null };
+  if (S.gTecho === 'una') {
+    // una agua: θ se deriva de h_baja (alero X−), h_alta (alero X+) y L_pend (ancho en X)
+    geo.hAlta = Math.max(+S.gHAlta, +S.gAlero); geo.hRef = S.gHRef;
+    geo.theta = Math.atan2(geo.hAlta - geo.hAlero, geo.ancho) * 180 / Math.PI;
+  }
+  return { ey, ex, geo };
 }
 
 /* flecha normal a una superficie: (nx, ny) = normal exterior en pantalla; + presión apunta hacia la superficie */
@@ -1140,9 +1178,10 @@ const leyenda = `<div class="legend"><span><i style="background:var(--pres)"></i
 
 function trazaHTML(r, geo) {
   const t = r.traza, parts = [], An = geo.ancho, Lg = geo.largo;
-  parts.push(`<p class="note" style="margin-top:0">h = ${fm(r.h)} m (${r.theta <= 10 ? 'θ ≤ 10°: altura de alero' : 'altura media del techo'}) · WX: h/L = ${nf(r.hLx, 3)}, L/B = ${nf(An / Lg, 3)} · WY: h/L = ${nf(r.hLy, 3)}, L/B = ${nf(Lg / An, 3)}</p>`);
+  const gt = r.geoT;
+  parts.push(`<p class="note" style="margin-top:0">${gt.una ? `Una agua: h_baja = ${fm(gt.hBaja)} m (X−), h_alta = ${fm(gt.hAlta)} m (X+), L_pend = ${fm(An)} m → θ = atan(${fm(gt.hAlta - gt.hBaja)}/${fm(An)}) = ${nf(r.theta, 2)}°; h_media = ${fm(gt.hMedia)} m. <b>h_ref = ${fm(r.h)} m</b> (${gt.criterio}), para Kh, qh, h/L y franjas de techo.` : `h = ${fm(r.h)} m (${gt.criterio})`} · WX: L = ${fm(An)} m, h/L = ${nf(r.hLx, 3)}, L/B = ${nf(An / Lg, 3)} · WY: L = ${fm(Lg)} m, h/L = ${nf(r.hLy, 3)}, L/B = ${nf(Lg / An, 3)}. Franjas medidas desde el borde de barlovento de cada dirección${gt.una ? ' (con −WX, desde la fachada alta)' : ''}.</p>`);
   parts.push(`<div class="tbl"><table><thead><tr><th>Superficie</th><th>Regla (Fig. 4)</th><th class="n">Cp</th></tr></thead><tbody>
-    <tr><td>Muro barlovento</td><td>todos los valores, con qz</td><td class="n">0,800</td></tr>
+    <tr><td>Muro barlovento</td><td>todos los valores, con qz${gt.una ? ` · +WX: qz(h_baja = ${fm(gt.hBaja)} m), Kz = ${nf(r.qMuro['Muro X−'].Kz, 3)}; −WX: qz(h_alta = ${fm(gt.hAlta)} m), Kz = ${nf(r.qMuro['Muro X+'].Kz, 3)}; frontón trapezoidal (WY): qz(h_alta), Kz = ${nf(r.qMuro['Frontón Y−'].Kz, 3)}` : ''}</td><td class="n">0,800</td></tr>
     <tr><td>Muro sotavento WX</td><td>L/B = ${nf(An / Lg, 2)} → interp. (0–1: −0,5; 2: −0,3; ≥4: −0,2)</td><td class="n">${nf(r.CpLeeX, 3)}</td></tr>
     <tr><td>Muro sotavento WY</td><td>L/B = ${nf(Lg / An, 2)}</td><td class="n">${nf(r.CpLeeY, 3)}</td></tr>
     <tr><td>Muros laterales</td><td>todos los valores</td><td class="n">−0,700</td></tr></tbody></table></div>`);
@@ -1177,12 +1216,16 @@ function fig11HTML(r, anexo) {
   const F = FU(), mm = unit === 'kgf' ? 'kgf·m' : 'kN·m', mmu = unit === 'kgf' ? 'kgf·m/m' : 'kN·m/m';
   const m = r.minimo;
   const pill = (ok) => `<span class="pill ${ok ? 'ok' : 'bad'}">${ok ? 'CUMPLE' : 'NO CUMPLE'}</span>`;
-  const minimo = `<table>
-      <tr class="grp"><td colspan="2">Carga mínima (6.1.5): 0,25 kN/m² en muros + 0,13 kN/m² en techo proyectado</td></tr>
-      <tr><td>Dirección X</td><td class="n">mín ${nf(F.f(m.X), F.d)} · máx calc ${nf(F.f(m.maxFx), F.d)} ${F.u} ${pill(m.cumpleX)}</td></tr>
-      <tr><td>Dirección Y</td><td class="n">mín ${nf(F.f(m.Y), F.d)} · máx calc ${nf(F.f(m.maxFy), F.d)} ${F.u} ${pill(m.cumpleY)}</td></tr>
-    </table>${anexo ? '<p class="note">El Anexo A no menciona la carga mínima; se muestra como verificación complementaria.</p>' : ''}`;
-  if (!S.gDiaf) return minimo;
+  const una = S.gTecho === 'una';
+  const fila = (t, o, mx, ok) => `<tr><td>${t}</td><td class="n">${nf(o.Am, 2)} m² × 0,25 = ${nf(F.f(o.Fm), F.d)}</td><td class="n">${o.At > 0 ? `${nf(o.At, 2)} m² × 0,13 = ${nf(F.f(o.Ft), F.d)}` : '0 <span class="sub">(no visible)</span>'}</td><td class="n"><b>${nf(F.f(o.F), F.d)}</b></td><td class="n">${nf(F.f(mx), F.d)} ${pill(ok)}</td></tr>`;
+  const minimo = `<div class="tbl"><table>
+      <thead><tr><th>Silueta normal al viento</th><th class="n">Muro [${F.u}]</th><th class="n">Techo visible [${F.u}]</th><th class="n">Mínimo [${F.u}]</th><th class="n">Máx. calculado [${F.u}]</th></tr></thead><tbody>
+      ${fila(una ? 'WX desde la fachada baja (+WX)' : 'WX (+WX y −WX)', m.XP, una ? m.maxFxP : m.maxFx, una ? m.cumpleXP : m.cumpleX)}
+      ${una ? fila('WX desde la fachada alta (−WX)', m.XN, m.maxFxN, m.cumpleXN) : ''}
+      ${fila('WY (frontón completo como muro)', m.Y, m.maxFy, m.cumpleY)}</tbody>
+    </table></div><p class="note">Carga mínima 6.1.5: 0,25 kN/m² sobre la parte de muro y 0,13 kN/m² sobre la parte de techo visible de la silueta proyectada en el plano normal al viento. ${una ? 'Con WX desde la fachada alta el techo queda oculto. ' : ''}Con WY el plano del techo es paralelo al viento: todo el frontón es muro.${anexo ? ' El Anexo A no menciona la carga mínima; se muestra como verificación complementaria.' : ''}</p>`;
+  if (!TOR.aplica) return minimo + `<p class="note"><b>Torsión:</b> ${TOR.ex.texto}</p>`;
+  if (!(S.gDiaf && S.gDiafRig)) return minimo + `<p class="note"><b>Torsión aplicada:</b> estados WXT_…, WYT_… (caso 2) y W4_… (caso 4) con el bloque de presión de la nota 4; ver pestañas Caso 2 y Caso 4.</p>`;
   const tor = r.torsion.map((t) => `<tr><td>W${t.dir}</td><td class="n">${fm(t.B)}</td><td class="n">±${fm(t.e)}</td><td class="n">${P(t.pW)} / ${P(t.pL)}</td>
     <td class="n">${nf(F.f(t.MzUnit), F.d)}</td><td class="n">${nf(F.f(t.MzUnit * 0.75), F.d)}</td></tr>`).join('');
   return `<div class="split"><div class="tbl"><table>
@@ -1274,7 +1317,9 @@ function renderSAP(r, an, geo, anexo) {
     const d = N.cargasSAP(r, c, geo);
     const gcpi = anexo ? '' : ` · GCpi ${c.gcpi > 0 ? '+' : '−'}${nf(Math.abs(c.gcpi), 2)}`;
     const tit = `${c.dir === 'X' ? 'Dirección X' : 'Dirección Y'} · ${c.nombre}${gcpi}`;
-    const fr = d.frontones ? `<p class="note">Frontones (pilares, no van en el marco transversal): barlovento ${P(d.frontones.barl.p)} y sotavento ${P(d.frontones.sot.p)} ${u.u}. En el marco extremo, el frontón se modela con sus propios pilares; ver "Pilares de frontón" en el detalle.</p>` : '';
+    const fr = `<h4 class="sub4" style="margin-top:14px">Frontones · pilares de los ejes extremos 1 y ${nM} <span class="hint">${c.dir === 'X' ? 'muros laterales en WX' : 'barlovento y sotavento en WY'}</span><button class="btn act" type="button" data-copy="gSapF${k}">Copiar tabla</button></h4>
+      ${tablaFrontones(d.pilFront, nM, 'gSapF' + k)}
+      <p class="note">Carga por metro de altura del pilar = p × ancho tributario medido a lo largo del frontón. Los frontones se asignan sólo a los ejes extremos y sus pilares; nunca a marcos intermedios.</p>`;
     return `<div><h4 class="sub4">Cargas para SAP · ${tit} <span class="hint">${c.sap} · ${c.variante.nombre}</span><button class="btn act" type="button" data-copy="gSapT${k}">Copiar tabla</button></h4>
       <div class="tbl"><table id="gSapT${k}"><thead><tr><th>Elemento</th><th>Se aplica en</th>${d.grupos.map((g) => `<th class="n" style="text-transform:none">${grupoTxt(g, d.grupos)}</th>`).join('')}</tr></thead><tbody>
       ${d.filas.map((f) => `<tr><td>${f.el}</td><td class="sub">${f.ref}</td>${d.grupos.map((g) => `<td class="n">${cel(f.f(g))}</td>`).join('')}</tr>`).join('')}
@@ -1328,15 +1373,53 @@ function tablaGrupos(d, id) {
   return `<div class="tbl"><table id="${id}"><thead><tr><th>Elemento</th><th>Se aplica en</th>${d.grupos.map((g) => `<th class="n" style="text-transform:none">${gt(g)}</th>`).join('')}</tr></thead><tbody>
     ${d.filas.map((f) => `<tr><td>${f.el}</td><td class="sub">${f.ref}</td>${d.grupos.map((g) => `<td class="n">${cel(f.f(g))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
+/* Planta de un estado con torsión (bloques de presión de la nota 4 de la Fig. 11) */
+function torsionSVG(geo, t) {
+  const Lg = geo.largo, An = geo.ancho;
+  const W = 760, H = 380, m = 110;
+  const s = Math.min((W - 2 * m) / Lg, (H - 2 * 86) / An);
+  const x0 = (W - Lg * s) / 2, yb = (H + An * s) / 2;
+  const px = (y) => x0 + y * s, py = (x) => yb - x * s;
+  let g = `<rect x="${px(0)}" y="${py(An)}" width="${Lg * s}" height="${An * s}" fill="var(--panel2)" stroke="var(--fg)" stroke-width="1.6"/>`;
+  // muro → [punto inicial, punto final en pantalla, normal exterior, longitud real]
+  const geoM = { 'Muro X−': [[px(0), py(0)], [px(Lg), py(0)], [0, 1], Lg], 'Muro X+': [[px(0), py(An)], [px(Lg), py(An)], [0, -1], Lg],
+    'Frontón Y−': [[px(0), py(0)], [px(0), py(An)], [-1, 0], An], 'Frontón Y+': [[px(Lg), py(0)], [px(Lg), py(An)], [1, 0], An] };
+  for (const mu of t.muros) {
+    const [p0, p1, nrm, Lm] = geoM[mu.sup];
+    const tramos = mu.bloques ? mu.bloques.map((q) => [q.a, q.b, q.f]) : [[0, Lm, mu.f === undefined ? 1 : mu.f]];
+    for (const [qa, qb, f] of tramos) {
+      const v = mu.p * f, n = Math.max(2, Math.round(6 * (qb - qa) / Lm));
+      for (let k = 0; k < n; k++) { const u_ = (qa + (qb - qa) * (k + 0.5) / n) / Lm; g += flecha(p0[0] + (p1[0] - p0[0]) * u_, p0[1] + (p1[1] - p0[1]) * u_, nrm[0], nrm[1], v, 24); }
+      const um = (qa + qb) / 2 / Lm, lx = p0[0] + (p1[0] - p0[0]) * um + nrm[0] * 34, ly = p0[1] + (p1[1] - p0[1]) * um + nrm[1] * 40 + (nrm[1] < 0 ? -4 : nrm[1] > 0 ? 8 : 4);
+      g += `<text x="${lx}" y="${ly}" text-anchor="${nrm[0] < 0 ? 'end' : nrm[0] > 0 ? 'start' : 'middle'}" fill="${colorV(v)}">${nf(f, 3)}·p = ${valTxt(v)}</text>`;
+    }
+  }
+  // línea media de los muros con bloques y viento
+  const dirs = t.dir === 'XY' ? ['X', 'Y'] : [t.dir];
+  if (dirs.includes('X')) g += `<line x1="${px(Lg / 2)}" y1="${py(An) - 6}" x2="${px(Lg / 2)}" y2="${py(0) + 6}" stroke="var(--accent)" stroke-dasharray="4 3"/>`;
+  if (dirs.includes('Y')) g += `<line x1="${px(0) - 6}" y1="${py(An / 2)}" x2="${px(Lg) + 6}" y2="${py(An / 2)}" stroke="var(--accent)" stroke-dasharray="4 3"/>`;
+  const senX = t.sentido, senY = t.dir === 'XY' ? t.sentidoY : t.sentido;
+  if (dirs.includes('X')) g += flechaViento(px(Lg) + 70, senX > 0 ? H - 12 : 12, 0, senX > 0 ? -1 : 1, 'WX');
+  if (dirs.includes('Y')) g += flechaViento(senY > 0 ? 8 : W - 8, H - 70, senY > 0 ? 1 : -1, 0, 'WY');
+  g += `<g stroke="var(--fg)" stroke-width="1.3" fill="none"><path d="M16,${H - 16} h30 M16,${H - 16} v-30"/><path d="M46,${H - 16} l-6,-3 v6 z M16,${H - 46} l-3,6 h6 z" fill="var(--fg)"/></g><text x="50" y="${H - 12}" fill="var(--fg)">Y</text><text x="11" y="${H - 50}" fill="var(--fg)">X</text>`;
+  return `<svg class="dia" viewBox="0 0 ${W} ${H}" role="img" aria-label="Planta del estado ${t.sap}"><text x="8" y="16" fill="var(--muted)">${t.sap} · planta · ${U().u}; techo al 0,75 (no dibujado)</text>${g}</svg>`;
+}
+/* Cargas por metro de altura en los pilares de frontón (ejes extremos) */
+function tablaFrontones(pf, nM, id) {
+  const rol = (r_) => r_ === 'lateral' ? 'lateral' : r_;
+  return `<div class="tbl"><table id="${id}"><thead><tr><th>Frontón</th><th class="n">p [${U().u}]</th>${pf.pilares.map((q) => `<th class="n" style="text-transform:none">Pilar eje ${q.eje}<br><span class="sub">trib. ${fm(q.trib)} m</span></th>`).join('')}</tr></thead><tbody>
+    <tr><td>Y− · eje 1 <span class="sub">${rol(pf.rolYm)}</span></td><td class="n">${P(pf.pYm)}</td>${pf.pilares.map((q) => `<td class="n">${Wl(q.wYm)}</td>`).join('')}</tr>
+    <tr><td>Y+ · eje ${nM} <span class="sub">${rol(pf.rolYp)}</span></td><td class="n">${P(pf.pYp)}</td>${pf.pilares.map((q) => `<td class="n">${Wl(q.wYp)}</td>`).join('')}</tr></tbody></table></div>`;
+}
 function renderFig11Tabs(r, an, geo, anexo) {
-  const diaf = !!S.gDiaf, F = FU(), u = U(), mm = unit === 'kgf' ? 'kgf·m' : 'kN·m';
-  const tabs = [['1', 'Caso 1', ''], ['2', 'Caso 2', diaf ? '' : 'no aplica'], ['3', 'Caso 3', ''], ['4', 'Caso 4', diaf ? '' : 'no aplica']];
-  $('gFigTabs').innerHTML = tabs.map(([k, t, p]) => `<button type="button" role="tab" data-fig="${k}" aria-selected="${S.gFig === k}">${t}${p ? ` <span class="pill bad">${p}</span>` : ''}</button>`).join('');
+  const F = FU(), u = U(), mm = unit === 'kgf' ? 'kgf·m' : 'kN·m';
+  const tabs = [['1', 'Caso 1', ''], ['2', 'Caso 2', TOR.aplica ? '' : 'eximido'], ['3', 'Caso 3', ''], ['4', 'Caso 4', TOR.aplica ? '' : 'eximido']];
+  $('gFigTabs').innerHTML = tabs.map(([k, t, p]) => `<button type="button" role="tab" data-fig="${k}" aria-selected="${S.gFig === k}">${t}${p ? ` <span class="pill warn">${p}</span>` : ''}</button>`).join('');
   $('gC1').hidden = S.gFig !== '1'; $('gCN').hidden = S.gFig === '1';
   if (S.gFig === '1') return;
   const X = an.sel.filter((x) => x.c.dir === 'X').map((x) => x.c), Y = an.sel.filter((x) => x.c.dir === 'Y').map((x) => x.c);
   const wl = (c) => ({ pW: c.muros.find((m) => m.rol === 'barlovento').p, pL: c.muros.find((m) => m.rol === 'sotavento').p, sen: c.sentido });
-  const noAplica = (k) => `<p style="margin:0 0 8px"><b>Caso ${k}: no aplica.</b></p><p class="note">El caso ${k} de la Fig. 11 agrega torsión: ${k === '2' ? '75 % de un estado con su resultante desplazada e = ±0,15B' : '56,3 % de un estado X y de un estado Y simultáneos, con torsión'}. Como la torsión accidental de la NCh 433, se aplica como un momento Mz sobre el diafragma de cada nivel. Esta estructura no tiene niveles con diafragma (galpón de un nivel con techo arriostrado), por lo que no se aplica. Si tiene 2 o más niveles, active "Estructura con 2 o más niveles" en Geometría e ingrese la altura de cada nivel.</p>`;
+  const noAplica = (k) => `<p style="margin:0 0 8px"><b>Caso ${k}: no considerado.</b></p><p class="note">${TOR.ex.texto}</p><p class="note">Para considerarlo, elija "Aplicar" en la tarjeta Torsión.</p>`;
   const k = S.gFig;
   if (k === '3') {
     const pares = [];
@@ -1356,28 +1439,38 @@ function renderFig11Tabs(r, an, geo, anexo) {
       <p class="note">Columnas: 0,75·(muro del estado X) + 0,75·(muro lateral del estado Y), en ${u.ul}. Signo +: hacia el interior en columnas y hacia abajo en vigas.</p>`;
     return;
   }
-  if (!diaf) { $('gCN').innerHTML = noAplica(k); return; }
-  const alt = N.parseEjes(S.gNiveles);
-  if (alt.error || alt.sep.length < 1) { $('gCN').innerHTML = `<p class="warn">Ingrese la altura de cada nivel en Geometría (por ejemplo 3.5, 3.0).</p>`; return; }
-  const cx = X[0], cy = Y[0];
-  const kf = k === '2' ? 0.75 : 0.563;
-  const niv = N.torsionNiveles(cx, cy, geo, alt.sep, kf);
-  const tabla = (dirs) => `<div class="tbl"><table><thead><tr><th>Nivel</th><th class="n">z [m]</th><th class="n">h trib. [m]</th>${dirs.map((dd) => `<th class="n">F${dd} [${F.u}]</th><th class="n">Mz${dd} = ±F${dd}·e${dd} [${mm}]</th>`).join('')}${dirs.length > 1 ? `<th class="n">Mz total [${mm}]</th>` : ''}</tr></thead><tbody>` +
-    niv.map((n) => `<tr><td>${n.nivel}</td><td class="n">${fm(n.z)}</td><td class="n">${fm(n.htrib)}</td>${dirs.map((dd) => `<td class="n">${nf(F.f(n[dd].F), F.d)}</td><td class="n">±${nf(F.f(n[dd].Mz), F.d)}</td>`).join('')}${dirs.length > 1 ? `<td class="n">±${nf(F.f(n.X.Mz + n.Y.Mz), F.d)}</td>` : ''}</tr>`).join('') + '</tbody></table></div>';
-  if (k === '2') {
-    $('gCN').innerHTML = `<p class="note" style="margin-top:0">Caso 2: en muros el 75 % de la presión de diseño de un estado, junto con un momento torsor Mz por la excentricidad e = ±0,15B, para cada dirección por separado; techo al 75 % del caso 1. En cada nivel, Mz = F·e con F = 0,75·(|pW| + |pL|)·B·h trib., aplicado en el centro de masas del diafragma con el signo más desfavorable.</p>
-      <div style="display:grid;gap:10px">${fig11SVG(geo, { X: Object.assign({ f: 0.75 }, wl(cx)), mz: true, titulo: `Caso 2 · dirección X (${cx.sap})` })}${fig11SVG(geo, { Y: Object.assign({ f: 0.75 }, wl(cy)), mz: true, titulo: `Caso 2 · dirección Y (${cy.sap})` })}</div>${leyenda}
-      <h4 class="sub4" style="margin-top:14px">Momento torsor por nivel</h4>${tabla(['X', 'Y'].filter((dd) => niv[0][dd]))}
-      <p style="margin:12px 0 4px"><b>Modelo 3D (SAP), por cada estado:</b> <span class="mono">0,75·Estado_M + 0,75·Estado_T ± MzX (o ± MzY) en cada nivel</span></p>
-      <p class="note" style="margin-top:0">Aplique los estados de la dirección X con MzX y los de la dirección Y con MzY. Mz no depende del signo de GCpi (la presión interna se anula en la fuerza de piso), por lo que sirve para ambos estados de cada dirección.</p>`;
-  } else {
-    $('gCN').innerHTML = `<p class="note" style="margin-top:0">Caso 4: presiones de muro y momento torsor iguales al 75 % del caso 2 (muros al 56,3 % del caso 1), en ambas direcciones a la vez; techo al 100 % del mayor valor del caso 2. En cada nivel se suman los torsores de ambas direcciones.</p>
-      ${fig11SVG(geo, { X: Object.assign({ f: 0.563 }, wl(cx)), Y: Object.assign({ f: 0.563 }, wl(cy)), mz: true, titulo: `Caso 4 · ${cx.sap} + ${cy.sap}` })}${leyenda}
-      <h4 class="sub4" style="margin-top:14px">Momento torsor por nivel</h4>${tabla(['X', 'Y'].filter((dd) => niv[0][dd]))}
-      <p style="margin:12px 0 4px"><b>Modelo 3D (SAP):</b> <span class="mono">0,563·EstadoX_M + 0,563·EstadoY_M + 0,75·(techo del estado con mayor levantamiento)_T ± Mz total en cada nivel</span></p>
-      <p class="note" style="margin-top:0">Combine estados X e Y con el mismo signo de GCpi, igual que en el caso 3.</p>`;
+  if (!TOR.aplica) { $('gCN').innerHTML = noAplica(k); return; }
+  const lista = k === '2' ? TOR.T.c2 : TOR.T.c4, key = k === '2' ? 'gT2' : 'gT4';
+  if (!lista.length) { $('gCN').innerHTML = '<p class="note">Sin estados para combinar.</p>'; return; }
+  const t = lista.find((x) => x.sap === S[key]) || lista[0];
+  const d = N.cargasSAP(r, t, geo); d.nM = r.marcos.length;
+  const intro = k === '2'
+    ? 'Caso 2 (nota 4 de la Fig. 11, bloque de presión distribuido, sin diafragma rígido): en los muros normales al viento, barlovento y sotavento, la mitad "alta" del ancho B lleva 1,20·p y la otra 0,30·p (≡ 0,75·p con torsión e = 0,15B), con la mitad alta del mismo lado en ambos muros; muros laterales 0,75·p; techo 0,75 del caso 1. p = presión de diseño del caso 1 (incluye GCpi). eP: mitad alta en la coordenada menor (ejes 1, 2… con WX; ejes A, B… con WY).'
+    : 'Caso 4: X e Y simultáneos, cada uno al 0,75 del caso 2: en los muros normales de cada dirección 0,90·p en la mitad alta y 0,225·p en la otra; techo al 100 % del mayor valor de techo del caso 2 (0,75 del caso 1, nota 2). Se combinan estados con el mismo signo de GCpi.';
+  let html = `<p class="note" style="margin-top:0">${intro}</p>
+    <label class="f" style="max-width:560px;margin-bottom:10px"><span>Estado con torsión (${lista.length})</span><select id="gTorSel" data-key="${key}">${lista.map((x) => `<option value="${x.sap}"${x === t ? ' selected' : ''}>${x.sap}</option>`).join('')}</select></label>
+    <p class="note" style="margin-top:0"><b class="mono">${t.sap}</b>: ${t.desc}.</p>
+    ${torsionSVG(geo, t)}${leyenda}
+    <h4 class="sub4" style="margin-top:14px">Cargas para SAP · marcos · ${t.sap}<button class="btn act" type="button" data-copy="gTorT">Copiar tabla</button></h4>
+    ${tablaGrupos(d, 'gTorT')}
+    <p class="note">Columnas: w = Σ p·f·(tramo de la franja tributaria dentro de cada mitad), ponderado por longitud si la franja cruza la línea media; vigas de techo al 0,75 del caso 1. En ${u.ul}.</p>
+    <h4 class="sub4" style="margin-top:14px">Frontones · pilares de los ejes extremos<button class="btn act" type="button" data-copy="gTorF">Copiar tabla</button></h4>
+    ${tablaFrontones(d.pilFront, r.marcos.length, 'gTorF')}
+    <p class="note">Carga por metro de altura del pilar = p × ancho tributario a lo largo del frontón${t.dir !== 'X' ? ', con el bloque de torsión de WY' : ''}. Sólo ejes extremos (1 y ${r.marcos.length}); nunca en marcos intermedios.</p>`;
+  if (S.gDiaf && S.gDiafRig) {
+    const alt = N.parseEjes(S.gNiveles);
+    if (!alt.error && alt.sep.length) {
+      const kf = k === '2' ? 0.75 : 0.563;
+      const niv = N.torsionNiveles(X[0], Y[0], geo, alt.sep, kf);
+      const dirs = ['X', 'Y'].filter((dd) => niv[0][dd]);
+      html += `<h4 class="sub4" style="margin-top:14px">Alternativa con diafragma rígido · momento torsor por piso</h4><div class="tbl"><table><thead><tr><th>Piso</th><th class="n">z [m]</th><th class="n">h trib. [m]</th>${dirs.map((dd) => `<th class="n">F${dd} [${F.u}]</th><th class="n">Mz${dd} = ±F${dd}·e${dd} [${mm}]</th>`).join('')}</tr></thead><tbody>` +
+        niv.map((n) => `<tr><td>${n.nivel}</td><td class="n">${fm(n.z)}</td><td class="n">${fm(n.htrib)}</td>${dirs.map((dd) => `<td class="n">${nf(F.f(n[dd].F), F.d)}</td><td class="n">±${nf(F.f(n[dd].Mz), F.d)}</td>`).join('')}</tr>`).join('') + '</tbody></table></div>' +
+        `<p class="note">En un modelo 3D con diafragma rígido puede reemplazar el bloque por ${kf === 0.75 ? '0,75' : '0,563'}·(muros) ± Mz aplicado en el centro de masas de cada piso (F = k·(|pW| + |pL|)·B·h trib., e = 0,15B).</p>`;
+    }
   }
+  $('gCN').innerHTML = html;
 }
+document.addEventListener('change', (e) => { if (e.target.id !== 'gTorSel') return; S[e.target.dataset.key] = e.target.value; save(); render(); });
 function renderAnalisis(r, an, geo, anexo) {
   const u = U(), F = FU(), mm = unit === 'kgf' ? 'kgf·m' : 'kN·m';
   const una = geo.tipoTecho === 'una';
@@ -1392,11 +1485,11 @@ function renderAnalisis(r, an, geo, anexo) {
   const X = an.sel.filter((x) => x.c.dir === 'X').map((x) => x.c), Y = an.sel.filter((x) => x.c.dir === 'Y').map((x) => x.c);
   const tz = Object.fromEntries(r.torsion.map((t) => [t.dir, t]));
   const rows = [];
-  if (S.gDiaf) for (const c of [...X, ...Y]) rows.push(['Caso 2', c.sap, `0,75·${c.sap}_M + 0,75·${c.sap}_T ± MZ${c.dir} (${nf(F.f(tz[c.dir] ? tz[c.dir].MzUnit : 0), F.d)} ${mm}/m de altura)`]);
+  if (TOR.aplica) for (const t of TOR.T.c2) rows.push(['Caso 2', t.sap, `${t.base.sap} con bloque de torsión: muros normales 1,20·p / 0,30·p (e ${t.es > 0 ? '+' : '−'}), laterales 0,75·p, techo 0,75·${t.base.sap}_T`]);
   const pares = [];
   for (const x of X) for (const y of Y) if (anexo || Math.sign(x.gcpi) === Math.sign(y.gcpi)) pares.push([x, y]);
   for (const [x, y] of pares) { const t = x.Fz >= y.Fz ? x : y; rows.push(['Caso 3', x.sap + ' + ' + y.sap, `0,75·${x.sap}_M + 0,75·${y.sap}_M + 1,0·${t.sap}_T`]); }
-  if (S.gDiaf) for (const [x, y] of pares) { const t = x.Fz >= y.Fz ? x : y; rows.push(['Caso 4', x.sap + ' + ' + y.sap, `0,563·${x.sap}_M + 0,563·${y.sap}_M + 0,75·${t.sap}_T ± MZ4X ± MZ4Y (${nf(F.f(tz.X ? tz.X.MzUnit * 0.75 : 0), F.d)} y ${nf(F.f(tz.Y ? tz.Y.MzUnit * 0.75 : 0), F.d)} ${mm}/m de altura)`]); }
+  if (TOR.aplica) for (const t of TOR.T.c4) rows.push(['Caso 4', t.sap, `${t.base.sap} (muros X) + ${t.baseY.sap} (frontones) con bloques 0,90·p / 0,225·p (eX ${t.ex > 0 ? '+' : '−'}, eY ${t.ey > 0 ? '+' : '−'}); techo 0,75·${t.baseT.sap}_T`]);
   $('gAnaC').innerHTML = `<thead><tr><th>Caso Fig. 11</th><th>Estados</th><th>Combinación en SAP</th></tr></thead><tbody>` + rows.map((x) => `<tr><td>${x[0]}</td><td class="mono">${x[1]}</td><td class="mono">${x[2]}</td></tr>`).join('') + '</tbody>';
   renderSAP(r, an, geo, anexo);
   $('gAnaNota').innerHTML = `El caso 1 son los estados de la tabla, cada uno por separado. Para los casos 2 a 4 defina cada estado como dos <i>load patterns</i>: …_M (presiones en muros) y …_T (presiones en techo), con los valores de la tabla y de "Presiones por caso". Así se aplican los factores de la Fig. 11: caso 2 muros y techo al 75 %; caso 3 muros al 75 % y el techo del estado con mayor levantamiento al 100 %; caso 4 muros al 56,3 % y techo al 75 %. MZ es el momento torsor por la excentricidad ±0,15B (caso 4: suma de ambas direcciones); en diafragma flexible reemplácelo por el bloque de presión equivalente, como en las tablas de marcos. En los casos 3 y 4 se combinan estados con el mismo signo de GCpi.${an.simX || an.simY ? ' Por simetría, los sentidos espejo no requieren análisis adicional si la estructura también es simétrica.' : ''}`;
@@ -1412,7 +1505,7 @@ function renderMarcosAnalisis(r, an, geo, mi) {
   $('gMarResNota').innerHTML = `Envolvente de los 4 casos de diseño en cada marco (sin sentidos espejo). <b>Marcos a modelar: ${an.marcosSel.map((x) => 'eje ' + x.eje + (an.simY && +x.eje !== an.marcosRes.length + 1 - +x.eje ? ` (equivale al eje ${an.marcosRes.length + 1 - +x.eje} por simetría)` : '')).join(' y ')}</b>, que en conjunto cubren el máximo positivo y negativo de cada elemento (tolerancia 3 %): ${an.marcosSel.map((x) => `eje ${x.eje} → ${x.por.map((e) => (e.sg > 0 ? 'máx + ' : 'máx − ') + nomEl[e.k]).join(', ')}`).join('; ')}. El resto de los marcos queda cubierto por estos. Elija el marco en la lista para ver sus combinaciones.`;
   const mc = an.marcosRes[mi - 1];
   const cg = N.combosGobernantes(mc.cm, an.okNombre);
-  const ks = S.gDiaf ? ['c1', 'c2', 'c3', 'c4'] : ['c1', 'c3'];
+  const ks = TOR.aplica ? ['c1', 'c2', 'c3', 'c4'] : ['c1', 'c3'];
   const n = ks.reduce((a, k) => a + cg[k].length, 0);
   $('gMarGobTit').innerHTML = `Marco eje ${mc.mc.eje}: ${n} combinaciones que gobiernan <span class="hint">de ${mc.cm.c1.length + mc.cm.c2.length + mc.cm.c3.length + mc.cm.c4.length} evaluadas</span>`;
   const nom = { c1: 'Caso 1', c2: 'Caso 2 (0,75 + torsión)', c3: 'Caso 3 (0,75 X + 0,75 Y)', c4: 'Caso 4 (0,563 X + 0,563 Y + torsión)' };
@@ -1429,23 +1522,40 @@ function renderGalpon(g) {
   const r = anexo ? N.anexoA(gA(g), geo, { frontal060: !!S.gF060 }) : N.galponSAP(g, geo);
   const d = N.direccional(g, geo);
   const u = U(), F = FU();
+  const una = S.gTecho === 'una';
   $('gTheta').disabled = S.gTecho === 'plana';
+  $('gThetaBox').hidden = una; $('gHAltaBox').hidden = !una; $('gHRefBox').hidden = !una || anexo;
+  $('gAleroLbl').textContent = una ? 'h_baja · alero bajo, eje X− [m]' : 'Altura alero [m]';
   $('gF060Box').hidden = !anexo || S.gTecho !== 'dos';
   $('gRedBox').hidden = anexo;
   $('gPerfilCard').hidden = anexo;
+  $('gPerfilNota').textContent = una ? 'Una agua: los patrones usan en el muro de barlovento qz en la altura superior de ese muro (h_baja con +WX, h_alta con −WX) y en el frontón trapezoidal qz(h_alta), constantes en toda la altura (conservador). Si modela la variación con la altura, use esta tabla.' : 'Los patrones usan qh en toda la altura del muro de barlovento (conservador). Si modela la variación con la altura, use esta tabla.';
   $('gTit').textContent = anexo ? 'Galpón · Anexo A (método simplificado)' : 'Galpón · método direccional';
   $('gIntro').textContent = anexo
     ? 'Anexo A (normativo): pz = p0·Kz·C con Kz en z = h. I, Kzt y Ke se toman iguales a 1,0; Kd y G están incluidos en el factor de forma C; no se considera presión interna.'
     : 'Cap. 6 (SPRFV, todas las alturas): p = q·Kd·G·Cp − qh·Kd·(GCpi) (Ec. 4). Cada dirección ±WX, ±WY se combina con las variantes de Cp de techo (notas c y d de la Fig. 4) y con ±GCpi.';
   $('gStats').innerHTML = (anexo
     ? stat('θ', nf(r.theta, 1), '°') + stat('h', fm(r.h), 'm') + stat('p0', nf(u.f(r.p0), u.d), u.u) + stat('Kz(h)', nf(r.Kh, 3)) + stat('pz = p0·Kz', nf(u.f(r.pz), u.d), u.u)
-    : stat('θ', nf(r.theta, 1), '°') + stat('h', fm(r.h), 'm') + stat('h cumbrera', fm(+S.gAlero + r.rise), 'm')
+    : stat('θ', nf(r.theta, 2), '°') + (una ? stat('h_baja', fm(r.geoT.hBaja), 'm') + stat('h_alta', fm(r.geoT.hAlta), 'm') + stat('h_media', fm(r.geoT.hMedia), 'm') + stat('h_ref', fm(r.h), 'm')
+      : stat('h', fm(r.h), 'm') + stat('h cumbrera', fm(+S.gAlero + r.rise), 'm'))
       + stat('Kh', nf(r.Kh, 3)) + stat('qh', nf(u.f(r.qh), u.d), u.u) + stat('qh·Kd', nf(u.f(r.qh * g.Kd), u.d), u.u)) + stat('Patrones', r.casos.length);
   $('gPlanta').innerHTML = plantaSVG(geo, null, true) +
     `<p class="note">Marcos transversales en los ejes numéricos (1, 2, 3…) a lo largo de Y; ejes longitudinales con letra (A = muro X−, ${N.letraEje(ex.pos.length - 1)} = muro X+). Frontón Y− en el eje 1 y frontón Y+ en el eje ${ey.pos.length}.</p>`;
   $('gTraza').innerHTML = anexo ? trazaAnexo(r, S.gTecho) : trazaHTML(r, geo);
-  const an = N.analisisGalpon(r, geo, { diafragma: !!S.gDiaf });
+  // Torsión (casos 2 y 4): exención automática y opción del usuario
+  const altN = N.parseEjes(S.gNiveles);
+  const exT = N.exencionTorsion({ niveles: S.gDiaf ? Math.max(2, altN.sep.length) : 1, hAlta: +S.gAlero + r.rise, diafragmaRigido: !!S.gDiafRig });
+  const optEx = $('gTorsion').querySelector('option[value="eximir"]');
+  optEx.disabled = !exT.exenta;
+  if (!exT.exenta && S.gTorsion !== 'aplicar') { S.gTorsion = 'aplicar'; $('gTorsion').value = 'aplicar'; }
+  const aplica = S.gTorsion === 'aplicar' || !exT.exenta;
   $('gNivBox').hidden = !S.gDiaf;
+  const condTxt = `${exT.unPiso ? 'un piso' : '2 o más pisos'} · h_alta = ${fm(+S.gAlero + r.rise)} m ${exT.hOk ? '≤' : '>'} 9 m · ${exT.sinDiaf ? 'sin diafragma rígido' : 'con diafragma rígido'}`;
+  $('gTorInfo').innerHTML = exT.exenta
+    ? `${pillOk(true, 'Cumple la condición de exención: ' + condTxt)}${aplica ? ' Se aplican igualmente por decisión del usuario.' : ''}`
+    : `<span class="chkitem"><span class="pill bad">APLICAR</span> <span class="note">No cumple la exención (${condTxt}): los casos 2 y 4 son obligatorios.</span></span>`;
+  const an = N.analisisGalpon(r, geo, { torsion: aplica });
+  TOR = { aplica, ex: exT, T: aplica ? N.estadosTorsion(r, an.sel.map((x) => x.c), geo) : { c2: [], c4: [] } };
   const selS = an.sel.map((x) => x.c.sap);
   const rSel = { casos: an.sel.map((x) => x.c), rise: r.rise, metodo: r.metodo };
   vistaCasos(rSel, geo, 'gVista', 'gVP', 'gVS', 'gVistaDesc', 'gVista');
@@ -1474,13 +1584,13 @@ function renderGalpon(g) {
   const mc = r.marcos[mi - 1];
   const cm = an.marcosRes[mi - 1].cm;
   renderMarcosAnalisis(r, an, geo, mi);
-  const nombres = S.gDiaf ? { c1: 'Caso 1', c2: 'Caso 2', c3: 'Caso 3', c4: 'Caso 4' } : { c1: 'Caso 1', c3: 'Caso 3' };
+  const nombres = TOR.aplica ? { c1: 'Caso 1', c2: 'Caso 2', c3: 'Caso 3', c4: 'Caso 4' } : { c1: 'Caso 1', c3: 'Caso 3' };
   const elems = [['colXm', 'Columna eje A (X−)'], ...(S.gTecho === 'una' ? [['vigaU', 'Viga de techo']] : [['vigaX−', 'Viga faldón X−'], ['vigaX+', 'Viga faldón X+']]), ['colXp', `Columna eje ${N.letraEje(ex.pos.length - 1)} (X+)`]];
   $('gMarEnv').innerHTML = `<thead><tr><th>Elemento</th>${Object.keys(nombres).map((k) => `<th class="n">${nombres[k]} · máx +</th><th class="n">${nombres[k]} · máx −</th>`).join('')}</tr></thead><tbody>` +
     elems.map(([k, t]) => `<tr><td>${t}</td>${Object.keys(nombres).map((c) => { const e = cm.envol[c][k]; return e ? `<td class="n">${e.max > 0 ? Wl(e.max) + `<br><span class="sub mono">${e.nmax}</span>` : '—'}</td><td class="n">${e.min < 0 ? Wl(e.min) + `<br><span class="sub mono">${e.nmin}</span>` : '—'}</td>` : '<td></td><td></td>'; }).join('')}</tr>`).join('') + '</tbody>';
   $('gMarCasos').innerHTML = Object.keys(nombres).map((k, i) => `<details class="fold2"${i === 0 ? ' open' : ''}><summary>${nombres[k]} · ${cm[k].length} combinaciones</summary>
     <div class="act-row"><button class="btn" type="button" data-copy="gMT${k}">Copiar tabla</button></div><div class="tbl"><table id="gMT${k}">${tablaMarco(cm[k], S.gTecho)}</table></div></details>`).join('');
-  $('gMarNota').innerHTML = `w = p × ancho tributario del marco (${fm(mc.trib)} m, entre y = ${fm(mc.a)} y ${fm(mc.b)} m) en ${u.ul}; tramos de viga entre paréntesis en x [m]. Los factores de la Fig. 11 se aplican a la presión de diseño p de cada patrón. Caso 2 y 4: la torsión se representa con el bloque de presión equivalente (nota 4), que en este marco multiplica la presión de los muros X por f = 1 ± 1,8(y/L − 0,5) = ${nf(1 + 1.8 * (mc.y / geo.largo - 0.5), 2)} / ${nf(1 - 1.8 * (mc.y / geo.largo - 0.5), 2)}. Casos 3 y 4: se combinan patrones con el mismo signo de GCpi; TS / TP = techo con la máxima succión / la máxima presión entre los patrones combinados. Signo +: hacia el interior en columnas y hacia abajo en vigas.`;
+  $('gMarNota').innerHTML = `w = p × ancho tributario del marco (${fm(mc.trib)} m, entre y = ${fm(mc.a)} y ${fm(mc.b)} m) en ${u.ul}; tramos de viga entre paréntesis en x [m]. Los factores de la Fig. 11 se aplican a la presión de diseño p de cada patrón. Caso 2 y 4: torsión con el bloque de presión de la nota 4 (mitad alta 1,20·p y otra 0,30·p en el caso 2; 0,90·p y 0,225·p en el caso 4), ponderado por longitud en la franja tributaria del marco. Casos 3 y 4: se combinan patrones con el mismo signo de GCpi; TS / TP = techo con la máxima succión / la máxima presión entre los patrones combinados. Signo +: hacia el interior en columnas y hacia abajo en vigas.`;
 
   // Pilares de frontón (caso 1)
   const pil = r.pilares;

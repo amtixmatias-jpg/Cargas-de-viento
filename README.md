@@ -40,6 +40,13 @@ Parámetros generales (columna izquierda): zona, V y p0 (Tabla 1), I (Tabla 2), 
 node test/calc.test.js
 ```
 
+## Galpón: criterios
+
+- **Una agua:** entradas h_baja (alero X−), h_alta (alero X+), L_pend (ancho en X) y B (largo en Y). θ = atan((h_alta − h_baja)/L_pend), h_media = (h_alta + h_baja)/2 (3.2). h_ref = h_media por defecto, o h_alta (conservador); nunca h_baja. Muro de barlovento con qz en la altura superior de ese muro; frontones trapezoidales con qz(h_alta). h/L con L = L_pend (WX) y L = B (WY); franjas desde el borde de barlovento (con −WX, desde la fachada alta). Dos aguas y plano mantienen el criterio de la Fig. 4.
+- **Torsión (casos 2 y 4, Fig. 11):** exención automática si es de un piso con h_alta ≤ 9 m, o sin diafragma rígido; el usuario puede eximir con justificación o aplicar. Al aplicar se usa el bloque de presión de la nota 4: caso 2 con 1,20·p / 0,30·p por mitades de B en barlovento y sotavento, laterales 0,75·p y techo 0,75; caso 4 con 0,90·p / 0,225·p en X e Y simultáneos y techo al 100 % del mayor techo del caso 2. Estados WXT_…, WYT_… y W4_…, con planta y cargas por marco ponderadas por longitud.
+- **Carga mínima 6.1.5:** sobre la silueta proyectada normal al viento, muro × 0,25 kN/m² + techo visible × 0,13 kN/m²; con WY todo el frontón es muro. Se informa WX en ambos sentidos y WY.
+- **Frontones en SAP:** sólo en los pilares de los ejes extremos, con su ancho tributario a lo largo del frontón; nunca en marcos intermedios.
+
 ## Identidad gráfica
 
 Interfaz según la guía de M2 Ingeniería Civil: logo (`assets/logo-m2.png`, incrustado en la página, el favicon y la ficha), paleta naranja/azul marino con modo oscuro automático, tipografías Poppins, Open Sans e IBM Plex Mono.

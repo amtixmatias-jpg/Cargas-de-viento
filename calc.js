@@ -280,7 +280,9 @@
       const x1 = i + 1 < cortes.length ? cortes[i + 1] : Infinity;
       if (x0 >= Ltot) break;
       const xe = Math.min(x1, Ltot);
-      tramos.push({ x0, x1: xe, Cp: CpTechoZona((x0 + xe) / 2, h, hL, fb) });
+      const Cp = CpTechoZona((x0 + xe) / 2, h, hL, fb);
+      const ult = tramos[tramos.length - 1];
+      if (ult && Math.abs(ult.Cp - Cp) < 1e-12) ult.x1 = xe; else tramos.push({ x0, x1: xe, Cp });
     }
     return tramos;
   }
@@ -296,17 +298,43 @@
   }
 
   /**
+   * Geometría de techo y altura de referencia h (Fig. 4).
+   *  Una agua: entradas hAlero (= h_baja, alero bajo en X−) y hAlta (alero alto en X+); θ = atan((hAlta − hBaja)/L_pend);
+   *    h_media = (hAlta + hBaja)/2 (def. 3.2); h_ref = h_media (por defecto) o hAlta (geo.hRef = 'alta', conservador).
+   *    Nunca se usa h_baja como h_ref.
+   *  Dos aguas y plano: h = altura de alero si θ ≤ 10°, si no altura media del techo (Fig. 4).
+   */
+  function geoTecho(geo) {
+    const tipo = geo.tipoTecho, S = geo.ancho, hB = +geo.hAlero;
+    if (tipo === 'una' && geo.hAlta != null && +geo.hAlta >= hB) {
+      const rise = +geo.hAlta - hB;
+      const th = Math.atan2(rise, S) * 180 / Math.PI;
+      const hMedia = hB + rise / 2;
+      const alta = geo.hRef === 'alta';
+      return { th, rise, hBaja: hB, hAlta: hB + rise, hMedia, h: alta ? hB + rise : hMedia, criterio: alta ? 'h_ref = h_alta (opción conservadora)' : 'h_ref = h_media = (h_baja + h_alta)/2 (definición 3.2)', una: true };
+    }
+    const th = tipo === 'plana' ? 0 : +geo.theta;
+    const rad = th * Math.PI / 180;
+    const rise = tipo === 'dos' ? (S / 2) * Math.tan(rad) : tipo === 'una' ? S * Math.tan(rad) : 0;
+    const hMedia = hB + rise / 2;
+    if (tipo === 'una') {
+      const alta = geo.hRef === 'alta';
+      return { th, rise, hBaja: hB, hAlta: hB + rise, hMedia, h: alta ? hB + rise : hMedia, criterio: alta ? 'h_ref = h_alta (opción conservadora)' : 'h_ref = h_media = (h_baja + h_alta)/2 (definición 3.2)', una: true };
+    }
+    const h = th <= 10 ? hB : hMedia;
+    return { th, rise, hBaja: hB, hAlta: hB + rise, hMedia, h, criterio: th <= 10 ? 'θ ≤ 10°: h = altura de alero (Fig. 4)' : 'h = altura media del techo (Fig. 4)', una: false };
+  }
+
+  /**
    * Método direccional para edificio rectangular (galpón).
    * geo = { largo, ancho, hAlero, tipoTecho:'dos'|'una'|'plana', theta }
    *   largo: dimensión paralela a la cumbrera; ancho: luz (perpendicular a la cumbrera).
    * g = parámetros generales resueltos { V, I, Kd, Kzt, Ke, exp, kzMetodo, G, GCpi }
    */
   function direccional(g, geo) {
-    const th = geo.tipoTecho === 'plana' ? 0 : +geo.theta;
-    const rad = th * Math.PI / 180;
-    const rise = geo.tipoTecho === 'dos' ? (geo.ancho / 2) * Math.tan(rad) : geo.tipoTecho === 'una' ? geo.ancho * Math.tan(rad) : 0;
+    const gt = geoTecho(geo);
+    const th = gt.th, rise = gt.rise, h = gt.h;
     const hCum = geo.hAlero + rise;
-    const h = th <= 10 ? geo.hAlero : geo.hAlero + rise / 2;
     const qH = qz(g, h);
     const qh = qH.q;
     const Kd = g.Kd, G = g.G, GCpi = g.GCpi;
@@ -388,14 +416,18 @@
    */
   function galponSAP(g, geo) {
     const tipo = geo.tipoTecho;
-    const th = tipo === 'plana' ? 0 : +geo.theta;
+    const gt = geoTecho(geo);
+    const th = gt.th;
     const rad = th * Math.PI / 180;
     const S = geo.ancho, Lg = geo.largo;
-    const rise = tipo === 'dos' ? (S / 2) * Math.tan(rad) : tipo === 'una' ? S * Math.tan(rad) : 0;
-    const h = th <= 10 ? geo.hAlero : geo.hAlero + rise / 2;
+    const rise = gt.rise;
+    const h = gt.h;
     const qH = qz(g, h), qh = qH.q;
     const k = qh * g.Kd;
-    const pe = (Cp) => k * g.G * Cp;
+    const pe = (Cp, q) => (q === undefined ? qh : q) * g.Kd * g.G * Cp;
+    // Una agua: muro de barlovento con qz en la altura superior de ese muro (h_baja en X−, h_alta en X+);
+    // frontones trapezoidales a barlovento con qz en h_alta (conservador). Resto de superficies con qh.
+    const qMuro = gt.una ? { 'Muro X−': qz(g, gt.hBaja), 'Muro X+': qz(g, gt.hAlta), 'Frontón Y−': qz(g, gt.hAlta), 'Frontón Y+': qz(g, gt.hAlta) } : null;
     const slopeRoof = th >= 10 && tipo !== 'plana';
     const fbX = geo.redArea ? redArea((h / 2) * Lg) : 1; // franja 0–h/2 con viento X
     const fbY = geo.redArea ? redArea((h / 2) * S) : 1;
@@ -477,7 +509,11 @@
               muros.push({ sup: 'Frontón Y−', Cp: sentido > 0 ? 0.8 : CpLeeY, rol: sentido > 0 ? 'barlovento' : 'sotavento' });
               muros.push({ sup: 'Frontón Y+', Cp: sentido > 0 ? CpLeeY : 0.8, rol: sentido > 0 ? 'sotavento' : 'barlovento' });
             }
-            for (const m of muros) { m.pext = pe(m.Cp); m.p = m.pext - pi; }
+            for (const m of muros) {
+              const qm = qMuro && m.rol === 'barlovento' ? qMuro[m.sup] : null;
+              if (qm) { m.q = qm.q; m.zq = m.sup === 'Muro X−' ? gt.hBaja : gt.hAlta; m.Kz = qm.Kz; }
+              m.pext = pe(m.Cp, qm ? qm.q : undefined); m.p = m.pext - pi;
+            }
             const techo = techoTramos(dir, sentido, v).map((t) => Object.assign(t, { pext: pe(t.Cp), p: pe(t.Cp) - pi }));
 
             const signo = sentido > 0 ? '+' : '−';
@@ -495,7 +531,7 @@
 
     const post = procesarCasos(casos, { tipo, rad, S, Lg, hAlero: geo.hAlero, rise, Awall, Agable, sepMarcos: +geo.sepMarcos, ejesY: geo.ejesY, ejesX: geo.ejesX });
     return Object.assign({
-      metodo: 'cap6', theta: th, h, rise, Kh: qH.Kz, qh, hLx, hLy, CpLeeX, CpLeeY, ww, lw, zonasX, zonasY, fbX, fbY,
+      metodo: 'cap6', theta: th, h, rise, Kh: qH.Kz, qh, hLx, hLy, geoT: gt, qMuro, CpLeeX, CpLeeY, ww, lw, zonasX, zonasY, fbX, fbY,
       traza: slopeRoof ? trazaCpTecho(th, hLx) : null, slopeRoof, Awall, Agable, casos,
     }, post);
   }
@@ -560,14 +596,26 @@
       return { dir, B, e, pW: w.pext, pL: l.pext, hW, MzUnit: 0.75 * suma * B * e, Mz: 0.75 * suma * B * e * hW, Mz4: 0.563 * suma * B * e * hW };
     }).filter(Boolean);
 
-    // 6.1.5 Cargas mínimas: 0,25 kN/m² en muros y 0,13 kN/m² en la proyección vertical del techo
-    const riseT = ctx.rise;
+    // 6.1.5 Cargas mínimas sobre la silueta proyectada en el plano normal al viento:
+    // parte de muro × 0,25 kN/m² + parte de techo visible × 0,13 kN/m².
+    //  WX desde X− (fachada baja en una agua): muro Lg·hAlero, techo visible Lg·rise.
+    //  WX desde X+: en una agua muro Lg·h_alta y techo oculto; en dos aguas o plano, igual que desde X−.
+    //  WY: el frontón completo (trapecio o pentágono) es muro; el plano del techo es paralelo al viento.
+    const riseT = ctx.rise, una = tipo === 'una';
+    const sil = (Am, At) => ({ Am, At, Fm: 250 * Am, Ft: 130 * At, F: 250 * Am + 130 * At });
     const minimo = {
-      X: 250 * Lg * ctx.hAlero + 130 * Lg * riseT,
-      Y: 250 * S * ctx.hAlero + 130 * S * riseT / 2,
+      XP: sil(Lg * ctx.hAlero, Lg * riseT),
+      XN: una ? sil(Lg * (ctx.hAlero + riseT), 0) : sil(Lg * ctx.hAlero, Lg * riseT),
+      Y: sil(Agable, 0),
     };
-    const maxFx = Math.max(...casos.map((c) => Math.abs(c.Fx))), maxFy = Math.max(...casos.map((c) => Math.abs(c.Fy)));
-    minimo.cumpleX = maxFx >= minimo.X; minimo.cumpleY = maxFy >= minimo.Y; minimo.maxFx = maxFx; minimo.maxFy = maxFy;
+    const maxFxP = Math.max(0, ...casos.map((c) => c.Fx)), maxFxN = Math.max(0, ...casos.map((c) => -c.Fx));
+    const maxFy = Math.max(...casos.map((c) => Math.abs(c.Fy)));
+    Object.assign(minimo, {
+      maxFxP, maxFxN, maxFy, maxFx: Math.max(maxFxP, maxFxN),
+      cumpleXP: maxFxP >= minimo.XP.F, cumpleXN: maxFxN >= minimo.XN.F, cumpleY: maxFy >= minimo.Y.F,
+      X: Math.max(minimo.XP.F, minimo.XN.F),
+    });
+    minimo.cumpleX = minimo.cumpleXP && minimo.cumpleXN;
 
     // Cargas en marcos transversales (plano XZ): ejes numerados a lo largo de Y (posiciones libres)
     const marcos = [];
@@ -588,7 +636,7 @@
       pilares.push({ i: i + 1, eje: letraEje(i), x, a, b, trib: b - a });
     });
     function cargaMarco(c, mc) {
-      const wm = (sup) => c.muros.find((m) => m.sup === sup).p * mc.trib;
+      const wm = (sup) => cargaMuro(c.muros.find((m) => m.sup === sup), mc.a, mc.b);
       const res = { colXm: wm('Muro X−'), colXp: wm('Muro X+'), vigas: [] };
       const halvesM = tipo === 'una' ? [['U', 0, S]] : [['X−', 0, S / 2], ['X+', S / 2, S]];
       if (c.techo.every((t) => t.eje === 'x')) {
@@ -608,6 +656,88 @@
       return res;
     }
     return { env: Object.values(env), gobiernan, torsion, minimo, marcos, pilares, cargaMarco };
+  }
+
+  /**
+   * Carga lineal de un muro sobre un elemento con franja tributaria [a, b] medida a lo largo del muro.
+   * Con bloques de presión (torsión, nota 4 de la Fig. 11) se pondera por longitud: Σ p·f·(tramo dentro del bloque).
+   */
+  function cargaMuro(m, a, b) {
+    if (!m.bloques) return m.p * (m.f === undefined ? 1 : m.f) * (b - a);
+    let s = 0;
+    for (const q of m.bloques) s += m.p * q.f * Math.max(0, Math.min(b, q.b) - Math.max(a, q.a));
+    return s;
+  }
+  /** Carga por metro de altura en los pilares de los frontones (ejes extremos), con su ancho tributario a lo largo del frontón. */
+  function cargasFrontones(r, c) {
+    const fm = (sup) => c.muros.find((m) => m.sup === sup);
+    const m0 = fm('Frontón Y−'), m1 = fm('Frontón Y+');
+    return {
+      rolYm: m0.rol, rolYp: m1.rol, pYm: m0.p, pYp: m1.p,
+      pilares: r.pilares.map((p) => ({ eje: p.eje, x: p.x, a: p.a, b: p.b, trib: p.trib, wYm: cargaMuro(m0, p.a, p.b), wYp: cargaMuro(m1, p.a, p.b) })),
+    };
+  }
+
+  /**
+   * Torsión, casos 2 y 4 de la Fig. 11 (6.3.5).
+   * Exención: edificio de un piso con h_alta ≤ 9 m, o sin diafragma rígido (concordante con 7.3.2 y ASCE/SEI 7-22 Ap. D).
+   * Al aplicar (nota 4, bloque de presión distribuido): en los muros normales al viento (barlovento y sotavento), la mitad
+   * "alta" del ancho B lleva 1,20·p y la otra 0,30·p (≡ 0,75·p + MT con e = 0,15B). Muros laterales 0,75·p; techo 0,75 del caso 1.
+   * Caso 4: X e Y simultáneos, cada uno al 0,75 del caso 2 (0,90·p y 0,225·p); techo 100 % del mayor techo del caso 2.
+   * e positivo (eP): mitad alta en la coordenada menor (y ∈ [0, B/2] con WX; x ∈ [0, B/2] con WY).
+   */
+  function exencionTorsion(o) {
+    const unPiso = !(o.niveles > 1);
+    const hOk = o.hAlta <= 9 + 1e-9;
+    const sinDiaf = !o.diafragmaRigido;
+    const exenta = (unPiso && hOk) || sinDiaf;
+    let texto = '';
+    const ref = 'Criterio concordante con la exención de NCh432:2025 §7.3.2 y ASCE/SEI 7-22 Apéndice D (referencia normativa de NCh432:2025, cláusula 2).';
+    if (unPiso && hOk && sinDiaf) texto = 'Casos 2 y 4 de la Fig. 11 no considerados: edificio de un piso con h ≤ 9 m y cubierta sin diafragma rígido; las cargas de muro se transfieren directamente a los marcos por ancho tributario, sin posibilidad de redistribución torsional. ' + ref;
+    else if (sinDiaf) texto = 'Casos 2 y 4 de la Fig. 11 no considerados: cubierta sin diafragma rígido; las cargas de muro se transfieren directamente a los marcos por ancho tributario, sin posibilidad de redistribución torsional. ' + ref;
+    else if (exenta) texto = 'Casos 2 y 4 de la Fig. 11 no considerados: edificio de un piso con h ≤ 9 m. ' + ref;
+    return { unPiso, hOk, sinDiaf, exenta, texto };
+  }
+  function bloquesTorsion(B, es, fA, fB) {
+    const A = { a: 0, b: B / 2 }, Bh = { a: B / 2, b: B };
+    return es > 0 ? [{ a: A.a, b: A.b, f: fA }, { a: Bh.a, b: Bh.b, f: fB }] : [{ a: A.a, b: A.b, f: fB }, { a: Bh.a, b: Bh.b, f: fA }];
+  }
+  function estadosTorsion(r, estados, geo) {
+    const S = geo.ancho, Lg = geo.largo;
+    const sfx = (c) => c.sap.replace(/^W[XY][PN]/, '');
+    const copiaMuros = (c, fn) => c.muros.map((m) => Object.assign({}, m, fn(m)));
+    const techo = (c, f) => c.techo.map((t) => Object.assign({}, t, { p: t.p * f, pext: t.pext * f }));
+    const c2 = [];
+    for (const c of estados) for (const es of [1, -1]) {
+      const B = c.dir === 'X' ? Lg : S;
+      const muros = copiaMuros(c, (m) => m.rol === 'lateral' ? { f: 0.75 } : { bloques: bloquesTorsion(B, es, 1.2, 0.3) });
+      c2.push({ caso: 2, base: c, es, dir: c.dir, sentido: c.sentido, gcpi: c.gcpi, variante: c.variante,
+        sap: 'W' + c.dir + 'T_' + (c.sentido > 0 ? 'P' : 'N') + '_e' + (es > 0 ? 'P' : 'N') + sfx(c),
+        desc: 'Caso 2 · ' + c.sap + ' con torsión, e = ' + (es > 0 ? '+' : '−') + '0,15B: muros normales 1,20·p / 0,30·p, laterales 0,75·p, techo 0,75',
+        muros, techo: techo(c, 0.75) });
+    }
+    const c4 = [];
+    const X = estados.filter((c) => c.dir === 'X'), Y = estados.filter((c) => c.dir === 'Y');
+    let n = 0;
+    for (const cx of X) for (const cy of Y) {
+      if (Math.sign(cx.gcpi) !== Math.sign(cy.gcpi)) continue;
+      n++;
+      // techo: el del estado con el techo más desfavorable (mayor levantamiento con +GCpi o sin GCpi; mayor carga hacia abajo con −GCpi)
+      const ct = cx.gcpi < 0 ? (cx.Fz <= cy.Fz ? cx : cy) : (cx.Fz >= cy.Fz ? cx : cy);
+      for (const ex of [1, -1]) for (const ey of [1, -1]) {
+        const muros = cx.muros.map((m) => {
+          if (m.sup.startsWith('Muro')) return Object.assign({}, m, { bloques: bloquesTorsion(Lg, ex, 0.9, 0.225) });
+          const my = cy.muros.find((q) => q.sup === m.sup);
+          return Object.assign({}, my, { bloques: bloquesTorsion(S, ey, 0.9, 0.225) });
+        });
+        const sg = cx.gcpi > 0 ? '_1' : cx.gcpi < 0 ? '_2' : '_' + n;
+        c4.push({ caso: 4, base: cx, baseY: cy, baseT: ct, ex, ey, dir: 'XY', sentido: cx.sentido, sentidoY: cy.sentido, gcpi: cx.gcpi, variante: cx.variante,
+          sap: 'W4_X' + (cx.sentido > 0 ? 'P' : 'N') + 'Y' + (cy.sentido > 0 ? 'P' : 'N') + '_e' + (ex > 0 ? 'P' : 'N') + (ey > 0 ? 'P' : 'N') + sg,
+          desc: 'Caso 4 · ' + cx.sap + ' + ' + cy.sap + ', eX ' + (ex > 0 ? '+' : '−') + ', eY ' + (ey > 0 ? '+' : '−') + ': muros 0,90·p / 0,225·p, techo 0,75 de ' + ct.sap,
+          muros, techo: techo(ct, 0.75) });
+      }
+    }
+    return { c2, c4 };
   }
 
   /** Letra de eje longitudinal: A, B, …, Z, AA, AB… */
@@ -654,10 +784,11 @@
    * Cargas por marco para los 4 casos de diseño de la Fig. 11 (6.3.5).
    * Criterio: los factores se aplican a la presión de diseño p de cada patrón (Ec. 4, incluye GCpi).
    *  Caso 1: cada patrón al 100 %.
-   *  Caso 2: muros 0,75·p con torsión; en un marco transversal la excentricidad e = ±0,15B se representa con el
-   *          bloque de presión equivalente (nota 4): f(y) = 1 ± 1,8 (y/L − 0,5) en los muros X. Techo 0,75·p (caso 1).
+   *  Caso 2: torsión con el bloque de presión de la nota 4: muros normales al viento 1,20·p en la mitad "alta" de B y
+   *          0,30·p en la otra (≡ 0,75·p + MT con e = 0,15B), ponderado por longitud en la franja tributaria;
+   *          muros laterales 0,75·p; techo 0,75·p (caso 1).
    *  Caso 3: 0,75·muros WX + 0,75·muros WY simultáneos; techo = 100 % del mayor valor del caso 1 (nota 2).
-   *  Caso 4: 0,563·muros WX (con torsión) + 0,563·muros WY; techo = 100 % del mayor valor del caso 2 (0,75 del caso 1).
+   *  Caso 4: muros X al 0,75 del caso 2 (0,90·p / 0,225·p); techo = 100 % del mayor valor del caso 2 (0,75 del caso 1).
    * El "mayor valor" del techo se evalúa en dos variantes: máxima succión (mín. algebraico) y máxima presión.
    */
   function casosMarco(r, mc, Lg) {
@@ -665,11 +796,13 @@
     const xs = r.casos.filter((c) => c.dir === 'X'), ys = r.casos.filter((c) => c.dir === 'Y');
     const out = { c1: [], c2: [], c3: [], c4: [] };
     const scaleV = (v, f) => v.map((t) => ({ faldon: t.faldon, a: t.a, b: t.b, w: t.w * f }));
-    const fy = (es) => 1 + es * 1.8 * (mc.y / Lg - 0.5);
+    // factor medio del bloque de torsión sobre la franja tributaria del marco (mitad alta en y < L/2 si es > 0)
+    const fy = (es, fA, fB) => { const lo = Math.max(mc.a, 0), hi = Math.min(mc.b, Lg / 2), dA = Math.max(0, hi - lo), dB = mc.trib - dA;
+      return mc.trib > 0 ? (es > 0 ? fA * dA + fB * dB : fB * dA + fA * dB) / mc.trib : 0; };
     for (const c of r.casos) { const l = L(c); out.c1.push({ nombre: 'C1·' + c.sap, desc: c.desc, colXm: l.colXm, colXp: l.colXp, vigas: l.vigas }); }
     for (const c of xs) for (const es of [1, -1]) {
-      const l = L(c), f = 0.75 * fy(es);
-      out.c2.push({ nombre: 'C2·' + c.sap + '·e' + (es > 0 ? '+' : '−'), desc: '0,75 · ' + c.desc + ', excentricidad ' + (es > 0 ? '+' : '−') + '0,15B (f = ' + fy(es).toFixed(2) + ')',
+      const l = L(c), f = fy(es, 1.2, 0.3);
+      out.c2.push({ nombre: 'C2·' + c.sap + '·e' + (es > 0 ? '+' : '−'), desc: c.desc + ', torsión e = ' + (es > 0 ? '+' : '−') + '0,15B (bloque 1,20/0,30 → f = ' + f.toFixed(3) + ')',
         colXm: l.colXm * f, colXp: l.colXp * f, vigas: scaleV(l.vigas, 0.75) });
     }
     for (const c of ys) { const l = L(c); out.c2.push({ nombre: 'C2·' + c.sap, desc: '0,75 · ' + c.desc, colXm: 0.75 * l.colXm, colXp: 0.75 * l.colXp, vigas: scaleV(l.vigas, 0.75) }); }
@@ -685,9 +818,9 @@
         out.c3.push({ nombre: 'C3·' + tag + '·T' + modo, desc: '0,75·muros ' + (sx > 0 ? '+' : '−') + 'WX + 0,75·muros ' + (sy > 0 ? '+' : '−') + 'WY; techo 100 % máx. ' + (modo === 'S' ? 'succión' : 'presión') + ' del caso 1',
           colXm: 0.75 * (lx.colXm + ly.colXm), colXp: 0.75 * (lx.colXp + ly.colXp), vigas: envTecho(techos, modo, 1) });
         for (const es of [1, -1]) {
-          const f = 0.563 * fy(es);
-          out.c4.push({ nombre: 'C4·' + tag + '·T' + modo + '·e' + (es > 0 ? '+' : '−'), desc: '0,563·muros ' + (sx > 0 ? '+' : '−') + 'WX (f = ' + fy(es).toFixed(2) + ') + 0,563·muros ' + (sy > 0 ? '+' : '−') + 'WY; techo 100 % máx. ' + (modo === 'S' ? 'succión' : 'presión') + ' del caso 2',
-            colXm: f * lx.colXm + 0.563 * ly.colXm, colXp: f * lx.colXp + 0.563 * ly.colXp, vigas: envTecho(techos, modo, 0.75) });
+          const f = fy(es, 0.9, 0.225);
+          out.c4.push({ nombre: 'C4·' + tag + '·T' + modo + '·e' + (es > 0 ? '+' : '−'), desc: 'muros ' + (sx > 0 ? '+' : '−') + 'WX al 0,75 del caso 2 (bloque 0,90/0,225 → f = ' + f.toFixed(3) + ') con ' + (sy > 0 ? '+' : '−') + 'WY simultáneo en frontones; techo 100 % máx. ' + (modo === 'S' ? 'succión' : 'presión') + ' del caso 2',
+            colXm: f * lx.colXm, colXp: f * lx.colXp, vigas: envTecho(techos, modo, 0.75) });
         }
       }
     }
@@ -729,7 +862,7 @@
    *  Para los casos 2 a 4 de la Fig. 11 se reportan, por marco, sólo las combinaciones que gobiernan algún elemento.
    */
   function analisisGalpon(r, geo, opt) {
-    const diaf = !!(opt && opt.diafragma); // casos 2 a 4 de la Fig. 11 sólo con diafragma / 2 o más niveles
+    const diaf = !!(opt && (opt.torsion || opt.diafragma)); // casos 2 y 4 de la Fig. 11 sólo si se aplica la torsión
     const tol = 1e-6;
     const simX = geo.tipoTecho !== 'una';
     const pos = geo.ejesY || [0, geo.largo];
@@ -881,12 +1014,11 @@
     const S_ = geo.ancho;
     const filas = [];
     const vig = (l, fal) => l.vigas.filter((v) => v.faldon === fal || (fal === 'X−' && v.faldon === 'U'));
-    if (c.dir === 'X') {
+    if (c.dir === 'X' || c.dir === 'XY') {
+      // Los muros laterales (frontones) NO van en los marcos: se cargan en los pilares de frontón de los ejes extremos.
       const barl = c.sentido > 0 ? 'X−' : 'X+', sot = c.sentido > 0 ? 'X+' : 'X−';
-      const pLat = c.muros.find((m) => m.sup === 'Frontón Y−').p;
-      filas.push({ el: 'Muro barlovento', ref: 'columna ' + barl, f: (g) => [{ w: barl === 'X−' ? g.l.colXm : g.l.colXp }] });
-      filas.push({ el: 'Muro sotavento', ref: 'columna ' + sot, f: (g) => [{ w: sot === 'X−' ? g.l.colXm : g.l.colXp }] });
-      filas.push({ el: 'Muro lateral', ref: 'frontones (p × ancho trib.)', f: (g) => [{ w: pLat * g.marcos[0].trib }] });
+      filas.push({ el: 'Muro barlovento' + (c.dir === 'XY' ? ' WX' : ''), ref: 'columna ' + barl, f: (g) => [{ w: barl === 'X−' ? g.l.colXm : g.l.colXp }] });
+      filas.push({ el: 'Muro sotavento' + (c.dir === 'XY' ? ' WX' : ''), ref: 'columna ' + sot, f: (g) => [{ w: sot === 'X−' ? g.l.colXm : g.l.colXp }] });
       if (geo.tipoTecho === 'una') filas.push({ el: 'Techo', ref: c.sentido > 0 ? 'viga, viento desde lado bajo' : 'viga, viento desde lado alto', f: (g) => vig(g.l, 'X−') });
       else {
         filas.push({ el: 'Techo barlovento', ref: 'viga faldón ' + barl, f: (g) => vig(g.l, barl) });
@@ -901,7 +1033,7 @@
       }
     }
     const fr = c.dir === 'Y' ? { barl: c.muros.find((m) => m.rol === 'barlovento'), sot: c.muros.find((m) => m.rol === 'sotavento') } : null;
-    return { grupos, filas, frontones: fr, ancho: S_ };
+    return { grupos, filas, frontones: fr, pilFront: cargasFrontones(r, c), ancho: S_ };
   }
 
   /**
@@ -1305,7 +1437,7 @@
     G_ACC, ZONAS, IMPORTANCIA, KD, EXPOSICION, TERRENO, TABLA5, TABLA4, CERRAMIENTO, TOPO,
     lerp, round, Nm2_to_kgf, Kz, Ke, Kzt, qz, clasificarCerramiento, Ri,
     CpSotavento, CpTechoBarlovento, CpTechoSotavento, CpTechoZona, zonasTecho, CpZonaPromedio,
-    GCpfA, ENV_A, ENV_B, direccional, galponSAP, anexoA, CA1, CA2, procesarCasos, parseEjes, letraEje, casosMarco, analisisGalpon, combosGobernantes, cargasSAP, cargasCaso3, torsionNiveles, envTecho, cyrMuro, GCpMuro, trazaCpTecho, redArea, simplificado, contenedor, techumbre,
+    GCpfA, ENV_A, ENV_B, geoTecho, cargaMuro, cargasFrontones, exencionTorsion, estadosTorsion, direccional, galponSAP, anexoA, CA1, CA2, procesarCasos, parseEjes, letraEje, casosMarco, analisisGalpon, combosGobernantes, cargasSAP, cargasCaso3, torsionNiveles, envTecho, cyrMuro, GCpMuro, trazaCpTecho, redArea, simplificado, contenedor, techumbre,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NCh432 = api;
